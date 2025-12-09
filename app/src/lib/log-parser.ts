@@ -12,7 +12,8 @@ export type LogEntryType =
   | "success"
   | "info"
   | "debug"
-  | "warning";
+  | "warning"
+  | "thinking";
 
 export interface LogEntry {
   id: string;
@@ -75,6 +76,18 @@ function detectEntryType(content: string): LogEntryType {
     return "warning";
   }
 
+  // Thinking/Preparation info
+  if (
+    trimmed.toLowerCase().includes("ultrathink") ||
+    trimmed.toLowerCase().includes("thinking level") ||
+    trimmed.toLowerCase().includes("estimated cost") ||
+    trimmed.toLowerCase().includes("estimated time") ||
+    trimmed.toLowerCase().includes("budget tokens") ||
+    trimmed.match(/thinking.*preparation/i)
+  ) {
+    return "thinking";
+  }
+
   // Debug info (JSON, stack traces, etc.)
   if (
     trimmed.startsWith("{") ||
@@ -130,6 +143,8 @@ function generateTitle(type: LogEntryType, content: string): string {
       return "Success";
     case "warning":
       return "Warning";
+    case "thinking":
+      return "Thinking Level";
     case "debug":
       return "Debug Info";
     case "prompt":
@@ -180,6 +195,9 @@ export function parseLogOutput(rawOutput: string): LogEntry[] {
       trimmedLine.startsWith("✅") ||
       trimmedLine.startsWith("❌") ||
       trimmedLine.startsWith("⚠️") ||
+      trimmedLine.startsWith("🧠") ||
+      trimmedLine.toLowerCase().includes("ultrathink preparation") ||
+      trimmedLine.toLowerCase().includes("thinking level") ||
       (trimmedLine.startsWith("Input:") && currentEntry?.type === "tool_call");
 
     if (isNewEntry) {
@@ -320,6 +338,14 @@ export function getLogTypeColors(type: LogEntryType): {
         text: "text-orange-300",
         icon: "text-orange-400",
         badge: "bg-orange-500/20 text-orange-300",
+      };
+    case "thinking":
+      return {
+        bg: "bg-indigo-500/10",
+        border: "border-l-indigo-500",
+        text: "text-indigo-300",
+        icon: "text-indigo-400",
+        badge: "bg-indigo-500/20 text-indigo-300",
       };
     case "debug":
       return {

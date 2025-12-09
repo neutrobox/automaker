@@ -195,6 +195,14 @@ export type AutoModeEvent =
       featureId: string;
       phase: "planning" | "action" | "verification";
       message: string;
+    }
+  | {
+      type: "auto_mode_ultrathink_preparation";
+      featureId: string;
+      warnings: string[];
+      recommendations: string[];
+      estimatedCost?: number;
+      estimatedTime?: string;
     };
 
 export interface AutoModeAPI {
@@ -315,6 +323,23 @@ export interface ElectronAPI {
 
   // Auto Mode APIs
   autoMode: AutoModeAPI;
+
+  // Claude CLI Detection API
+  checkClaudeCli: () => Promise<{
+    success: boolean;
+    status?: string;
+    method?: string;
+    version?: string;
+    path?: string;
+    recommendation?: string;
+    installCommands?: {
+      macos?: string;
+      windows?: string;
+      linux?: string;
+      npm?: string;
+    };
+    error?: string;
+  }>;
 }
 
 declare global {

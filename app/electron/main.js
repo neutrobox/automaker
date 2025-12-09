@@ -551,3 +551,21 @@ ipcMain.handle("auto-mode:commit-feature", async (_, { projectPath, featureId })
     return { success: false, error: error.message };
   }
 });
+
+// ============================================================================
+// Claude CLI Detection IPC Handlers
+// ============================================================================
+
+/**
+ * Check Claude Code CLI installation status
+ */
+ipcMain.handle("claude:check-cli", async () => {
+  try {
+    const claudeCliDetector = require("./services/claude-cli-detector");
+    const info = claudeCliDetector.getInstallationInfo();
+    return { success: true, ...info };
+  } catch (error) {
+    console.error("[IPC] claude:check-cli error:", error);
+    return { success: false, error: error.message };
+  }
+});

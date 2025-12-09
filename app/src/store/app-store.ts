@@ -52,6 +52,12 @@ export interface FeatureImagePath {
   mimeType: string;
 }
 
+// Available models for feature execution
+export type AgentModel = "opus" | "sonnet" | "haiku";
+
+// Thinking level (budget_tokens) options
+export type ThinkingLevel = "none" | "low" | "medium" | "high" | "ultrathink";
+
 export interface Feature {
   id: string;
   category: string;
@@ -63,6 +69,8 @@ export interface Feature {
   startedAt?: string; // ISO timestamp for when the card moved to in_progress
   skipTests?: boolean; // When true, skip TDD approach and require manual verification
   summary?: string; // Summary of what was done/modified by the agent
+  model?: AgentModel; // Model to use for this feature (defaults to opus)
+  thinkingLevel?: ThinkingLevel; // Thinking level for extended thinking (defaults to none)
 }
 
 export interface AppState {

@@ -16,7 +16,7 @@ import {
   SortableContext,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { useAppStore, Feature, FeatureImage, FeatureImagePath } from "@/store/app-store";
+import { useAppStore, Feature, FeatureImage, FeatureImagePath, AgentModel, ThinkingLevel } from "@/store/app-store";
 import { getElectronAPI } from "@/lib/electron";
 import { cn } from "@/lib/utils";
 import {
@@ -44,7 +44,7 @@ import { KanbanColumn } from "./kanban-column";
 import { KanbanCard } from "./kanban-card";
 import { AutoModeLog } from "./auto-mode-log";
 import { AgentOutputModal } from "./agent-output-modal";
-import { Plus, RefreshCw, Play, StopCircle, Loader2, ChevronUp, ChevronDown, Users, Trash2, FastForward, FlaskConical, CheckCircle2, MessageSquare, GitCommit } from "lucide-react";
+import { Plus, RefreshCw, Play, StopCircle, Loader2, ChevronUp, ChevronDown, Users, Trash2, FastForward, FlaskConical, CheckCircle2, MessageSquare, GitCommit, Brain, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { Slider } from "@/components/ui/slider";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -54,6 +54,7 @@ import {
   ACTION_SHORTCUTS,
   KeyboardShortcut,
 } from "@/hooks/use-keyboard-shortcuts";
+import { useWindowState } from "@/hooks/use-window-state";
 
 type ColumnId = Feature["status"];
 
@@ -87,6 +88,8 @@ export function BoardView() {
     images: [] as FeatureImage[],
     imagePaths: [] as DescriptionImagePath[],
     skipTests: false,
+    model: "opus" as AgentModel,
+    thinkingLevel: "none" as ThinkingLevel,
   });
   const [isLoading, setIsLoading] = useState(true);
   const [isMounted, setIsMounted] = useState(false);
@@ -117,6 +120,9 @@ export function BoardView() {
 
   // Auto mode hook
   const autoMode = useAutoMode();
+
+  // Window state hook for compact dialog mode
+  const { isMaximized } = useWindowState();
 
   // Get in-progress features for keyboard shortcuts (memoized for shortcuts)
   const inProgressFeaturesForShortcuts = useMemo(() => {
@@ -405,6 +411,8 @@ export function BoardView() {
         imagePaths: f.imagePaths,
         skipTests: f.skipTests,
         summary: f.summary,
+        model: f.model,
+        thinkingLevel: f.thinkingLevel,
       }));
       await api.writeFile(
         `${currentProject.path}/.automaker/feature_list.json`,
@@ -531,10 +539,12 @@ export function BoardView() {
       images: newFeature.images,
       imagePaths: newFeature.imagePaths,
       skipTests: newFeature.skipTests,
+      model: newFeature.model,
+      thinkingLevel: newFeature.thinkingLevel,
     });
     // Persist the category
     saveCategory(category);
-    setNewFeature({ category: "", description: "", steps: [""], images: [], imagePaths: [], skipTests: false });
+    setNewFeature({ category: "", description: "", steps: [""], images: [], imagePaths: [], skipTests: false, model: "opus", thinkingLevel: "none" });
     setShowAddDialog(false);
   };
 
@@ -546,6 +556,8 @@ export function BoardView() {
       description: editingFeature.description,
       steps: editingFeature.steps,
       skipTests: editingFeature.skipTests,
+      model: editingFeature.model,
+      thinkingLevel: editingFeature.thinkingLevel,
     });
     // Persist the category if it's new
     if (editingFeature.category) {
@@ -1179,6 +1191,7 @@ export function BoardView() {
       {/* Add Feature Dialog */}
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
         <DialogContent
+          compact={!isMaximized}
           data-testid="add-feature-dialog"
           onKeyDown={(e) => {
             if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && newFeature.description) {
@@ -1193,7 +1206,7 @@ export function BoardView() {
               Create a new feature card for the Kanban board.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
+          <div className="space-y-4 py-4 overflow-y-auto flex-1 min-h-0">
             <div className="space-y-2">
               <Label htmlFor="category">Category</Label>
               <CategoryAutocomplete
@@ -1266,9 +1279,81 @@ export function BoardView() {
                 <FlaskConical className="w-3.5 h-3.5 text-muted-foreground" />
               </div>
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground mb-4">
               When enabled, this feature will require manual verification instead of automated TDD.
             </p>
+
+            {/* Model Selection */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Zap className="w-4 h-4 text-muted-foreground" />
+                Model
+              </Label>
+              <div className="flex gap-2">
+                {(["haiku", "sonnet", "opus"] as AgentModel[]).map((model) => (
+                  <button
+                    key={model}
+                    type="button"
+                    onClick={() => setNewFeature({ ...newFeature, model })}
+                    className={cn(
+                      "flex-1 px-3 py-2 rounded-md border text-sm font-medium transition-colors",
+                      newFeature.model === model
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-background hover:bg-accent border-input"
+                    )}
+                    data-testid={`model-select-${model}`}
+                  >
+                    {model === "haiku" && "Haiku"}
+                    {model === "sonnet" && "Sonnet"}
+                    {model === "opus" && "Opus"}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Haiku for simple tasks, Sonnet for balanced, Opus for complex tasks.
+              </p>
+            </div>
+
+            {/* Thinking Level */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Brain className="w-4 h-4 text-muted-foreground" />
+                Thinking Level
+              </Label>
+              <div className="flex gap-2 flex-wrap">
+                {(["none", "low", "medium", "high", "ultrathink"] as ThinkingLevel[]).map((level) => (
+                  <button
+                    key={level}
+                    type="button"
+                    onClick={() => {
+                      setNewFeature({ ...newFeature, thinkingLevel: level });
+                      if (level === "ultrathink") {
+                        toast.warning("Ultrathink Selected", {
+                          description: "Ultrathink uses extensive reasoning (45-180s, ~$0.48/task). Best for complex architecture, migrations, or debugging.",
+                          duration: 5000
+                        });
+                      }
+                    }}
+                    className={cn(
+                      "flex-1 px-3 py-2 rounded-md border text-sm font-medium transition-colors min-w-[80px]",
+                      newFeature.thinkingLevel === level
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-background hover:bg-accent border-input"
+                    )}
+                    data-testid={`thinking-level-${level}`}
+                  >
+                    {level === "none" && "None"}
+                    {level === "low" && "Low"}
+                    {level === "medium" && "Med"}
+                    {level === "high" && "High"}
+                    {level === "ultrathink" && "Ultra"}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Higher thinking levels give the model more time to reason through complex problems.
+              </p>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setShowAddDialog(false)}>
@@ -1296,13 +1381,13 @@ export function BoardView() {
         open={!!editingFeature}
         onOpenChange={() => setEditingFeature(null)}
       >
-        <DialogContent data-testid="edit-feature-dialog">
+        <DialogContent compact={!isMaximized} data-testid="edit-feature-dialog">
           <DialogHeader>
             <DialogTitle>Edit Feature</DialogTitle>
             <DialogDescription>Modify the feature details.</DialogDescription>
           </DialogHeader>
           {editingFeature && (
-            <div className="space-y-4 py-4">
+            <div className="space-y-4 py-4 overflow-y-auto flex-1 min-h-0">
               <div className="space-y-2">
                 <Label htmlFor="edit-category">Category</Label>
                 <CategoryAutocomplete
@@ -1377,9 +1462,81 @@ export function BoardView() {
                   <FlaskConical className="w-3.5 h-3.5 text-muted-foreground" />
                 </div>
               </div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground mb-4">
                 When enabled, this feature will require manual verification instead of automated TDD.
               </p>
+
+              {/* Model Selection */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <Zap className="w-4 h-4 text-muted-foreground" />
+                  Model
+                </Label>
+                <div className="flex gap-2">
+                  {(["haiku", "sonnet", "opus"] as AgentModel[]).map((model) => (
+                    <button
+                      key={model}
+                      type="button"
+                      onClick={() => setEditingFeature({ ...editingFeature, model })}
+                      className={cn(
+                        "flex-1 px-3 py-2 rounded-md border text-sm font-medium transition-colors",
+                        (editingFeature.model ?? "opus") === model
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-background hover:bg-accent border-input"
+                      )}
+                      data-testid={`edit-model-select-${model}`}
+                    >
+                      {model === "haiku" && "Haiku"}
+                      {model === "sonnet" && "Sonnet"}
+                      {model === "opus" && "Opus"}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Haiku for simple tasks, Sonnet for balanced, Opus for complex tasks.
+                </p>
+              </div>
+
+              {/* Thinking Level */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <Brain className="w-4 h-4 text-muted-foreground" />
+                  Thinking Level
+                </Label>
+                <div className="flex gap-2 flex-wrap">
+                  {(["none", "low", "medium", "high", "ultrathink"] as ThinkingLevel[]).map((level) => (
+                    <button
+                      key={level}
+                      type="button"
+                      onClick={() => {
+                        setEditingFeature({ ...editingFeature, thinkingLevel: level });
+                        if (level === "ultrathink") {
+                          toast.warning("Ultrathink Selected", {
+                            description: "Ultrathink uses extensive reasoning (45-180s, ~$0.48/task). Best for complex architecture, migrations, or debugging.",
+                            duration: 5000
+                          });
+                        }
+                      }}
+                      className={cn(
+                        "flex-1 px-3 py-2 rounded-md border text-sm font-medium transition-colors min-w-[80px]",
+                        (editingFeature.thinkingLevel ?? "none") === level
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-background hover:bg-accent border-input"
+                      )}
+                      data-testid={`edit-thinking-level-${level}`}
+                    >
+                      {level === "none" && "None"}
+                      {level === "low" && "Low"}
+                      {level === "medium" && "Med"}
+                      {level === "high" && "High"}
+                      {level === "ultrathink" && "Ultra"}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Higher thinking levels give the model more time to reason through complex problems.
+                </p>
+              </div>
             </div>
           )}
           <DialogFooter>
@@ -1468,6 +1625,7 @@ export function BoardView() {
         }
       }}>
         <DialogContent
+          compact={!isMaximized}
           data-testid="follow-up-dialog"
           onKeyDown={(e) => {
             if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && followUpPrompt.trim()) {
@@ -1487,7 +1645,7 @@ export function BoardView() {
               )}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
+          <div className="space-y-4 py-4 overflow-y-auto flex-1 min-h-0">
             <div className="space-y-2">
               <Label htmlFor="follow-up-prompt">Instructions</Label>
               <DescriptionImageDropZone

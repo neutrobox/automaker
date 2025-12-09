@@ -71,5 +71,22 @@
     "startedAt": "2025-12-09T22:31:41.946Z",
     "imagePaths": [],
     "skipTests": true
+  },
+  {
+    "id": "feature-1765321570899-oefrfast6",
+    "category": "Core",
+    "description": "I would like to have abbility to set correct model for new feautres. so inteas of only using claude opus we could use other models like sonnet or haiku for easier / light one tasks as well to add abbility how much thinking lvl we wanna use on each task as well",
+    "steps": [
+      "User add new feature",
+      "User Describe it",
+      "Select the automated testing or manual one",
+      "If the task is light / easy to implement he use lighter model from anthropi sdk such as sonnet / haiku",
+      "agent execute task with correct model "
+    ],
+    "status": "verified",
+    "startedAt": "2025-12-09T23:07:37.223Z",
+    "imagePaths": [],
+    "skipTests": false,
+    "summary": "Added model selection (Haiku/Sonnet/Opus) and thinking level (None/Low/Medium/High) controls to feature creation and edit dialogs. Modified: app-store.ts (added AgentModel and ThinkingLevel types), board-view.tsx (UI controls), feature-executor.js (dynamic model/thinking config), feature-loader.js (field persistence). Agent now executes with user-selected model and extended thinking settings."
   }
 ]

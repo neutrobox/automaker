@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Settings, Key, Eye, EyeOff, CheckCircle2, AlertCircle, Loader2, Zap, Sun, Moon, Palette, LayoutGrid, Minimize2, Square, Maximize2 } from "lucide-react";
+import { Settings, Key, Eye, EyeOff, CheckCircle2, AlertCircle, Loader2, Zap, Sun, Moon, Palette, LayoutGrid, Minimize2, Square, Maximize2, Terminal } from "lucide-react";
+import { getElectronAPI } from "@/lib/electron";
 
 export function SettingsView() {
   const { apiKeys, setApiKeys, setCurrentView, theme, setTheme, kanbanCardDetailLevel, setKanbanCardDetailLevel } = useAppStore();
@@ -19,11 +20,41 @@ export function SettingsView() {
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [testingGeminiConnection, setTestingGeminiConnection] = useState(false);
   const [geminiTestResult, setGeminiTestResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [claudeCliStatus, setClaudeCliStatus] = useState<{
+    success: boolean;
+    status?: string;
+    method?: string;
+    version?: string;
+    path?: string;
+    recommendation?: string;
+    installCommands?: {
+      macos?: string;
+      windows?: string;
+      linux?: string;
+      npm?: string;
+    };
+    error?: string;
+  } | null>(null);
 
   useEffect(() => {
     setAnthropicKey(apiKeys.anthropic);
     setGoogleKey(apiKeys.google);
   }, [apiKeys]);
+
+  useEffect(() => {
+    const checkCliStatus = async () => {
+      const api = getElectronAPI();
+      if (api?.checkClaudeCli) {
+        try {
+          const status = await api.checkClaudeCli();
+          setClaudeCliStatus(status);
+        } catch (error) {
+          console.error("Failed to check Claude CLI status:", error);
+        }
+      }
+    };
+    checkCliStatus();
+  }, []);
 
   const handleTestConnection = async () => {
     setTestingConnection(true);
@@ -308,6 +339,86 @@ export function SettingsView() {
               </div>
             </div>
           </div>
+
+          {/* Claude CLI Status Section */}
+          {claudeCliStatus && (
+            <div className="rounded-xl border border-white/10 bg-zinc-900/50 backdrop-blur-md overflow-hidden">
+              <div className="p-6 border-b border-white/10">
+                <div className="flex items-center gap-2 mb-2">
+                  <Terminal className="w-5 h-5 text-brand-500" />
+                  <h2 className="text-lg font-semibold text-white">Claude Code CLI</h2>
+                </div>
+                <p className="text-sm text-zinc-400">
+                  Claude Code CLI provides better performance for long-running tasks, especially with ultrathink.
+                </p>
+              </div>
+              <div className="p-6 space-y-4">
+                {claudeCliStatus.success && claudeCliStatus.status === 'installed' ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 p-3 rounded-lg bg-green-500/10 border border-green-500/20">
+                      <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0" />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-green-400">Claude Code CLI Installed</p>
+                        <div className="text-xs text-green-400/80 mt-1 space-y-1">
+                          {claudeCliStatus.method && (
+                            <p>Method: <span className="font-mono">{claudeCliStatus.method}</span></p>
+                          )}
+                          {claudeCliStatus.version && (
+                            <p>Version: <span className="font-mono">{claudeCliStatus.version}</span></p>
+                          )}
+                          {claudeCliStatus.path && (
+                            <p className="truncate" title={claudeCliStatus.path}>
+                              Path: <span className="font-mono text-[10px]">{claudeCliStatus.path}</span>
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    {claudeCliStatus.recommendation && (
+                      <p className="text-xs text-zinc-400">{claudeCliStatus.recommendation}</p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex items-start gap-3 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+                      <AlertCircle className="w-5 h-5 text-yellow-500 mt-0.5 shrink-0" />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-yellow-400">Claude Code CLI Not Detected</p>
+                        <p className="text-xs text-yellow-400/80 mt-1">
+                          {claudeCliStatus.recommendation || 'Consider installing Claude Code CLI for optimal performance with ultrathink.'}
+                        </p>
+                      </div>
+                    </div>
+                    {claudeCliStatus.installCommands && (
+                      <div className="space-y-2">
+                        <p className="text-xs font-medium text-zinc-300">Installation Commands:</p>
+                        <div className="space-y-1">
+                          {claudeCliStatus.installCommands.npm && (
+                            <div className="p-2 rounded bg-zinc-950/50 border border-white/5">
+                              <p className="text-xs text-zinc-400 mb-1">npm:</p>
+                              <code className="text-xs text-zinc-300 font-mono break-all">{claudeCliStatus.installCommands.npm}</code>
+                            </div>
+                          )}
+                          {claudeCliStatus.installCommands.macos && (
+                            <div className="p-2 rounded bg-zinc-950/50 border border-white/5">
+                              <p className="text-xs text-zinc-400 mb-1">macOS/Linux:</p>
+                              <code className="text-xs text-zinc-300 font-mono break-all">{claudeCliStatus.installCommands.macos}</code>
+                            </div>
+                          )}
+                          {claudeCliStatus.installCommands.windows && (
+                            <div className="p-2 rounded bg-zinc-950/50 border border-white/5">
+                              <p className="text-xs text-zinc-400 mb-1">Windows (PowerShell):</p>
+                              <code className="text-xs text-zinc-300 font-mono break-all">{claudeCliStatus.installCommands.windows}</code>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Appearance Section */}
           <div className="rounded-xl border border-white/10 bg-zinc-900/50 backdrop-blur-md overflow-hidden">

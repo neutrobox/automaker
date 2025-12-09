@@ -41,21 +41,8 @@ export interface StatResult {
   error?: string;
 }
 
-// Auto Mode types
-export type AutoModePhase = "planning" | "action" | "verification";
-
-export interface AutoModeEvent {
-  type: "auto_mode_feature_start" | "auto_mode_progress" | "auto_mode_tool" | "auto_mode_feature_complete" | "auto_mode_error" | "auto_mode_complete" | "auto_mode_phase";
-  featureId?: string;
-  feature?: object;
-  content?: string;
-  tool?: string;
-  input?: unknown;
-  passes?: boolean;
-  message?: string;
-  error?: string;
-  phase?: AutoModePhase;
-}
+// Auto Mode types - Import from electron.d.ts to avoid duplication
+import type { AutoModeEvent } from "@/types/electron";
 
 export interface AutoModeAPI {
   start: (projectPath: string) => Promise<{ success: boolean; error?: string }>;
@@ -92,6 +79,21 @@ export interface ElectronAPI {
   getPath: (name: string) => Promise<string>;
   saveImageToTemp?: (data: string, filename: string, mimeType: string) => Promise<SaveImageResult>;
   autoMode?: AutoModeAPI;
+  checkClaudeCli?: () => Promise<{
+    success: boolean;
+    status?: string;
+    method?: string;
+    version?: string;
+    path?: string;
+    recommendation?: string;
+    installCommands?: {
+      macos?: string;
+      windows?: string;
+      linux?: string;
+      npm?: string;
+    };
+    error?: string;
+  }>;
 }
 
 declare global {

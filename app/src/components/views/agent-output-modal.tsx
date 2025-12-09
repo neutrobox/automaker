@@ -11,6 +11,7 @@ import {
 import { Loader2, List, FileText } from "lucide-react";
 import { getElectronAPI } from "@/lib/electron";
 import { LogViewer } from "@/components/ui/log-viewer";
+import type { AutoModeEvent } from "@/types/electron";
 
 interface AgentOutputModalProps {
   open: boolean;
@@ -113,44 +114,78 @@ export function AgentOutputModal({
     if (!api?.autoMode) return;
 
     const unsubscribe = api.autoMode.onEvent((event) => {
-      // Filter events for this specific feature only
-      if (event.featureId !== featureId) {
+      // Filter events for this specific feature only (skip events without featureId)
+      if ("featureId" in event && event.featureId !== featureId) {
         return;
       }
 
       let newContent = "";
 
-      if (event.type === "auto_mode_progress") {
-        newContent = event.content || "";
-      } else if (event.type === "auto_mode_tool") {
-        const toolName = event.tool || "Unknown Tool";
-        const toolInput = event.input
-          ? JSON.stringify(event.input, null, 2)
-          : "";
-        newContent = `\n🔧 Tool: ${toolName}\n${
-          toolInput ? `Input: ${toolInput}` : ""
-        }`;
-      } else if (event.type === "auto_mode_phase") {
-        const phaseEmoji =
-          event.phase === "planning"
-            ? "📋"
-            : event.phase === "action"
-            ? "⚡"
-            : "✅";
-        newContent = `\n${phaseEmoji} ${event.message}\n`;
-      } else if (event.type === "auto_mode_error") {
-        newContent = `\n❌ Error: ${event.error}\n`;
-      } else if (event.type === "auto_mode_feature_complete") {
-        const emoji = event.passes ? "✅" : "⚠️";
-        newContent = `\n${emoji} Task completed: ${event.message}\n`;
+      switch (event.type) {
+        case "auto_mode_progress":
+          newContent = event.content || "";
+          break;
+        case "auto_mode_tool":
+          const toolName = event.tool || "Unknown Tool";
+          const toolInput = event.input
+            ? JSON.stringify(event.input, null, 2)
+            : "";
+          newContent = `\n🔧 Tool: ${toolName}\n${
+            toolInput ? `Input: ${toolInput}` : ""
+          }`;
+          break;
+        case "auto_mode_phase":
+          const phaseEmoji =
+            event.phase === "planning"
+              ? "📋"
+              : event.phase === "action"
+              ? "⚡"
+              : "✅";
+          newContent = `\n${phaseEmoji} ${event.message}\n`;
+          break;
+        case "auto_mode_error":
+          newContent = `\n❌ Error: ${event.error}\n`;
+          break;
+        case "auto_mode_ultrathink_preparation":
+          // Format thinking level preparation information
+          let prepContent = `\n🧠 Ultrathink Preparation\n`;
+          
+          if (event.warnings && event.warnings.length > 0) {
+            prepContent += `\n⚠️ Warnings:\n`;
+            event.warnings.forEach((warning: string) => {
+              prepContent += `  • ${warning}\n`;
+            });
+          }
+          
+          if (event.recommendations && event.recommendations.length > 0) {
+            prepContent += `\n💡 Recommendations:\n`;
+            event.recommendations.forEach((rec: string) => {
+              prepContent += `  • ${rec}\n`;
+            });
+          }
+          
+          if (event.estimatedCost !== undefined) {
+            prepContent += `\n💰 Estimated Cost: ~$${event.estimatedCost.toFixed(2)} per execution\n`;
+          }
+          
+          if (event.estimatedTime) {
+            prepContent += `\n⏱️ Estimated Time: ${event.estimatedTime}\n`;
+          }
+          
+          newContent = prepContent;
+          break;
+        case "auto_mode_feature_complete":
+          const emoji = event.passes ? "✅" : "⚠️";
+          newContent = `\n${emoji} Task completed: ${event.message}\n`;
 
-        // Close the modal when the feature is verified (passes = true)
-        if (event.passes) {
-          // Small delay to show the completion message before closing
-          setTimeout(() => {
-            onClose();
-          }, 1500);
-        }
+          // Close the modal when the feature is verified (passes = true)
+          if (event.passes) {
+            // Small delay to show the completion message before closing
+            setTimeout(() => {
+              onClose();
+            }, 1500);
+          }
+          break;
       }
 
       if (newContent) {

@@ -13,6 +13,7 @@ import {
   Bug,
   Info,
   FileOutput,
+  Brain,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -43,6 +44,8 @@ const getLogIcon = (type: LogEntryType) => {
       return <CheckCircle2 className="w-4 h-4" />;
     case "warning":
       return <AlertTriangle className="w-4 h-4" />;
+    case "thinking":
+      return <Brain className="w-4 h-4" />;
     case "debug":
       return <Bug className="w-4 h-4" />;
     default:

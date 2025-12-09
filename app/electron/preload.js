@@ -138,6 +138,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
       };
     },
   },
+
+  // Claude CLI Detection API
+  checkClaudeCli: () => ipcRenderer.invoke("claude:check-cli"),
 });
 
 // Also expose a flag to detect if we're in Electron

@@ -84,6 +84,12 @@ class FeatureLoader {
       if (f.summary !== undefined) {
         featureData.summary = f.summary;
       }
+      if (f.model !== undefined) {
+        featureData.model = f.model;
+      }
+      if (f.thinkingLevel !== undefined) {
+        featureData.thinkingLevel = f.thinkingLevel;
+      }
       return featureData;
     });
 

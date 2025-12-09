@@ -4,10 +4,97 @@ const contextManager = require("./context-manager");
 const featureLoader = require("./feature-loader");
 const mcpServerFactory = require("./mcp-server-factory");
 
+// Model name mappings
+const MODEL_MAP = {
+  haiku: "claude-haiku-4-20250514",
+  sonnet: "claude-sonnet-4-20250514",
+  opus: "claude-opus-4-5-20251101",
+};
+
+// Thinking level to budget_tokens mapping
+// These values control how much "thinking time" the model gets for extended thinking
+const THINKING_BUDGET_MAP = {
+  none: null, // No extended thinking
+  low: 4096, // Light thinking
+  medium: 16384, // Moderate thinking
+  high: 65536, // Deep thinking
+  ultrathink: 262144, // Ultra-deep thinking (maximum reasoning)
+};
+
 /**
  * Feature Executor - Handles feature implementation using Claude Agent SDK
  */
 class FeatureExecutor {
+  /**
+   * Get the model string based on feature's model setting
+   */
+  getModelString(feature) {
+    const modelKey = feature.model || "opus"; // Default to opus
+    return MODEL_MAP[modelKey] || MODEL_MAP.opus;
+  }
+
+  /**
+   * Get thinking configuration based on feature's thinkingLevel
+   */
+  getThinkingConfig(feature) {
+    const level = feature.thinkingLevel || "none";
+    const budgetTokens = THINKING_BUDGET_MAP[level];
+
+    if (budgetTokens === null) {
+      return null; // No extended thinking
+    }
+
+    return {
+      type: "enabled",
+      budget_tokens: budgetTokens,
+    };
+  }
+
+  /**
+   * Prepare for ultrathink execution - validate and warn
+   */
+  prepareForUltrathink(feature, thinkingConfig) {
+    if (feature.thinkingLevel !== 'ultrathink') {
+      return { ready: true };
+    }
+
+    const warnings = [];
+    const recommendations = [];
+
+    // Check CLI installation
+    const claudeCliDetector = require('./claude-cli-detector');
+    const cliInfo = claudeCliDetector.getInstallationInfo();
+    
+    if (cliInfo.status === 'not_installed') {
+      warnings.push('Claude Code CLI not detected - ultrathink may have timeout issues');
+      recommendations.push('Install Claude Code CLI for optimal ultrathink performance');
+    }
+
+    // Validate budget tokens
+    if (thinkingConfig && thinkingConfig.budget_tokens > 32000) {
+      warnings.push(`Ultrathink budget (${thinkingConfig.budget_tokens} tokens) exceeds recommended 32K - may cause long-running requests`);
+      recommendations.push('Consider using batch processing for budgets above 32K');
+    }
+
+    // Cost estimate (rough)
+    const estimatedCost = (thinkingConfig?.budget_tokens || 0) / 1000 * 0.015; // Rough estimate
+    if (estimatedCost > 1.0) {
+      warnings.push(`Estimated cost: ~$${estimatedCost.toFixed(2)} per execution`);
+    }
+
+    // Time estimate
+    warnings.push('Ultrathink tasks typically take 45-180 seconds');
+
+    return {
+      ready: true,
+      warnings,
+      recommendations,
+      estimatedCost,
+      estimatedTime: '45-180 seconds',
+      cliInfo
+    };
+  }
+
   /**
    * Sleep helper
    */
@@ -46,9 +133,39 @@ class FeatureExecutor {
         projectPath
       );
 
+      // Get model and thinking configuration from feature settings
+      const modelString = this.getModelString(feature);
+      const thinkingConfig = this.getThinkingConfig(feature);
+
+      // Prepare for ultrathink if needed
+      if (feature.thinkingLevel === 'ultrathink') {
+        const preparation = this.prepareForUltrathink(feature, thinkingConfig);
+        
+        console.log(`[FeatureExecutor] Ultrathink preparation:`, preparation);
+        
+        // Log warnings
+        if (preparation.warnings && preparation.warnings.length > 0) {
+          preparation.warnings.forEach(warning => {
+            console.warn(`[FeatureExecutor] ⚠️ ${warning}`);
+          });
+        }
+        
+        // Send preparation info to renderer
+        sendToRenderer({
+          type: 'auto_mode_ultrathink_preparation',
+          featureId: feature.id,
+          warnings: preparation.warnings || [],
+          recommendations: preparation.recommendations || [],
+          estimatedCost: preparation.estimatedCost,
+          estimatedTime: preparation.estimatedTime
+        });
+      }
+
+      console.log(`[FeatureExecutor] Using model: ${modelString}, thinking: ${feature.thinkingLevel || 'none'}`);
+
       // Configure options for the SDK query
       const options = {
-        model: "claude-opus-4-5-20251101",
+        model: modelString,
         systemPrompt: promptBuilder.getCodingPrompt(),
         maxTurns: 1000,
         cwd: projectPath,
@@ -73,6 +190,11 @@ class FeatureExecutor {
         },
         abortController: abortController,
       };
+
+      // Add thinking configuration if enabled
+      if (thinkingConfig) {
+        options.thinking = thinkingConfig;
+      }
 
       // Build the prompt for this specific feature
       const prompt = promptBuilder.buildFeaturePrompt(feature);
@@ -256,8 +378,38 @@ class FeatureExecutor {
         projectPath
       );
 
+      // Get model and thinking configuration from feature settings
+      const modelString = this.getModelString(feature);
+      const thinkingConfig = this.getThinkingConfig(feature);
+
+      // Prepare for ultrathink if needed
+      if (feature.thinkingLevel === 'ultrathink') {
+        const preparation = this.prepareForUltrathink(feature, thinkingConfig);
+        
+        console.log(`[FeatureExecutor] Ultrathink preparation:`, preparation);
+        
+        // Log warnings
+        if (preparation.warnings && preparation.warnings.length > 0) {
+          preparation.warnings.forEach(warning => {
+            console.warn(`[FeatureExecutor] ⚠️ ${warning}`);
+          });
+        }
+        
+        // Send preparation info to renderer
+        sendToRenderer({
+          type: 'auto_mode_ultrathink_preparation',
+          featureId: feature.id,
+          warnings: preparation.warnings || [],
+          recommendations: preparation.recommendations || [],
+          estimatedCost: preparation.estimatedCost,
+          estimatedTime: preparation.estimatedTime
+        });
+      }
+
+      console.log(`[FeatureExecutor] Resuming with model: ${modelString}, thinking: ${feature.thinkingLevel || 'none'}`);
+
       const options = {
-        model: "claude-opus-4-5-20251101",
+        model: modelString,
         systemPrompt: promptBuilder.getVerificationPrompt(),
         maxTurns: 1000,
         cwd: projectPath,
@@ -272,6 +424,11 @@ class FeatureExecutor {
         },
         abortController: abortController,
       };
+
+      // Add thinking configuration if enabled
+      if (thinkingConfig) {
+        options.thinking = thinkingConfig;
+      }
 
       // Build prompt with previous context
       const prompt = promptBuilder.buildResumePrompt(feature, previousContext);
