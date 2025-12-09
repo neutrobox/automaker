@@ -178,7 +178,7 @@ export function CategoryAutocomplete({
       {isOpen && filteredSuggestions.length > 0 && (
         <ul
           ref={listRef}
-          className="absolute z-50 mt-1 w-full max-h-60 overflow-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95"
+          className="absolute z-50 mt-1 w-full max-h-60 overflow-auto rounded-md border bg-background p-1 shadow-md animate-in fade-in-0 zoom-in-95"
           role="listbox"
           data-testid="category-autocomplete-list"
         >
@@ -192,7 +192,10 @@ export function CategoryAutocomplete({
                 highlightedIndex === index && "bg-accent text-accent-foreground",
                 inputValue === suggestion && "font-medium"
               )}
-              onClick={() => handleSelect(suggestion)}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                handleSelect(suggestion);
+              }}
               onMouseEnter={() => setHighlightedIndex(index)}
               data-testid={`category-option-${suggestion.toLowerCase().replace(/\s+/g, "-")}`}
             >
