@@ -361,7 +361,7 @@ class FeatureExecutor {
 
   /**
    * Commit changes for a feature without doing additional work
-   * Just runs git add and git commit with the feature description
+   * Analyzes changes and creates a proper conventional commit message
    */
   async commitChangesOnly(feature, projectPath, sendToRenderer, execution) {
     console.log(`[FeatureExecutor] Committing changes for: ${feature.description}`);
@@ -373,7 +373,7 @@ class FeatureExecutor {
       sendToRenderer({
         type: "auto_mode_progress",
         featureId: feature.id,
-        content: "Committing changes to git...",
+        content: "Analyzing changes and creating commit...",
       });
 
       const abortController = new AbortController();
@@ -386,15 +386,16 @@ class FeatureExecutor {
       );
 
       const options = {
-        model: "claude-sonnet-4-20250514", // Use sonnet for simple commit task
-        systemPrompt: `You are a git assistant. Your only task is to commit the current changes with a proper commit message.
+        model: "claude-sonnet-4-20250514", // Use sonnet for commit task
+        systemPrompt: `You are a git commit assistant that creates professional conventional commit messages.
 
 IMPORTANT RULES:
 - DO NOT modify any code
 - DO NOT write tests
-- DO NOT do anything except committing the existing changes
-- Use the git command line tools via Bash`,
-        maxTurns: 10, // Short limit for simple task
+- DO NOT do anything except analyzing changes and committing them
+- Use the git command line tools via Bash
+- Create proper conventional commit messages based on what was actually changed`,
+        maxTurns: 15, // Allow some turns to analyze and commit
         cwd: projectPath,
         mcpServers: {
           "automaker-tools": featureToolsServer
@@ -407,17 +408,49 @@ IMPORTANT RULES:
         abortController: abortController,
       };
 
-      // Simple commit prompt
-      const prompt = `Please commit the current changes with this commit message:
+      // Prompt that guides the agent to create a proper conventional commit
+      const prompt = `Please commit the current changes with a proper conventional commit message.
 
-"${feature.category}: ${feature.description}"
+**Feature Context:**
+Category: ${feature.category}
+Description: ${feature.description}
 
-Steps:
-1. Run \`git add .\` to stage all changes
-2. Run \`git commit -m "message"\` with the provided message
-3. Report success
+**Your Task:**
 
-Do NOT modify any code or run tests. Just commit the existing changes.`;
+1. First, run \`git status\` to see all untracked and modified files
+2. Run \`git diff\` to see the actual changes (both staged and unstaged)
+3. Run \`git log --oneline -5\` to see recent commit message styles in this repo
+4. Analyze all the changes and draft a proper conventional commit message:
+   - Use conventional commit format: \`type(scope): description\`
+   - Types: feat, fix, refactor, style, docs, test, chore
+   - The description should be concise (under 72 chars) and focus on "what" was done
+   - Summarize the nature of the changes (new feature, enhancement, bug fix, etc.)
+   - Make sure the commit message accurately reflects the actual code changes
+5. Run \`git add .\` to stage all changes
+6. Create the commit with a message ending with:
+   🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+   Co-Authored-By: Claude Sonnet 4 <noreply@anthropic.com>
+
+Use a HEREDOC for the commit message to ensure proper formatting:
+\`\`\`bash
+git commit -m "$(cat <<'EOF'
+type(scope): Short description here
+
+Optional longer description if needed.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude Sonnet 4 <noreply@anthropic.com>
+EOF
+)"
+\`\`\`
+
+**IMPORTANT:**
+- DO NOT use the feature description verbatim as the commit message
+- Analyze the actual code changes to determine the appropriate commit message
+- The commit message should be professional and follow conventional commit standards
+- DO NOT modify any code or run tests - ONLY commit the existing changes`;
 
       const currentQuery = query({ prompt, options });
       execution.query = currentQuery;

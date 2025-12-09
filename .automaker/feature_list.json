@@ -51,5 +51,15 @@
     "description": "So i want to improve the look of the view of agent output modal its just plain text and im thinking to parse it better and kinda make it look like the last image of coolify logs nice colorded and somehow grouped into some types of info / debug so in our case like prompt / tool call etc",
     "steps": [],
     "status": "verified"
+  },
+  {
+    "id": "feature-1765316742659-rll51tb62",
+    "category": "Kanban",
+    "description": "We implemented the follow up prompt and waiting approval column its work well but when we click commit button its commiting with the title of follow up prompt i dont like this i would prefer the convencional commit that u as agent is creating when skip automated testing mode is off and u commit it in nice way look how we generate commit / handle it when automated testing is enabled and see how we do it when its disabled and its waiting for our approval and commit button how its handle it",
+    "steps": [],
+    "status": "waiting_approval",
+    "startedAt": "2025-12-09T21:56:25.922Z",
+    "imagePaths": [],
+    "skipTests": true
   }
 ]
