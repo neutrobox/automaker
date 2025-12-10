@@ -4,19 +4,12 @@ import { useState } from "react";
 import { useAppStore } from "@/store/app-store";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Settings, Trash2, Folder } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Settings } from "lucide-react";
 import { useCliStatus } from "./settings-view/hooks/use-cli-status";
 import { useScrollTracking } from "./settings-view/hooks/use-scroll-tracking";
 import { NAV_ITEMS } from "./settings-view/config/navigation";
 import { KeyboardMapDialog } from "./settings-view/components/keyboard-map-dialog";
+import { DeleteProjectDialog } from "./settings-view/components/delete-project-dialog";
 import { ApiKeysSection } from "./settings-view/api-keys/api-keys-section";
 import { ClaudeCliStatus } from "./settings-view/cli-status/claude-cli-status";
 import { CodexCliStatus } from "./settings-view/cli-status/codex-cli-status";
@@ -209,59 +202,12 @@ export function SettingsView() {
       />
 
       {/* Delete Project Confirmation Dialog */}
-      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <DialogContent className="bg-popover border-border max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Trash2 className="w-5 h-5 text-destructive" />
-              Delete Project
-            </DialogTitle>
-            <DialogDescription className="text-muted-foreground">
-              Are you sure you want to move this project to Trash?
-            </DialogDescription>
-          </DialogHeader>
-
-          {currentProject && (
-            <div className="flex items-center gap-3 p-4 rounded-lg bg-sidebar-accent/10 border border-sidebar-border">
-              <div className="w-10 h-10 rounded-lg bg-sidebar-accent/20 border border-sidebar-border flex items-center justify-center shrink-0">
-                <Folder className="w-5 h-5 text-brand-500" />
-              </div>
-              <div className="min-w-0">
-                <p className="font-medium text-foreground truncate">
-                  {currentProject.name}
-                </p>
-                <p className="text-xs text-muted-foreground truncate">
-                  {currentProject.path}
-                </p>
-              </div>
-            </div>
-          )}
-
-          <p className="text-sm text-muted-foreground">
-            The folder will remain on disk until you permanently delete it from
-            Trash.
-          </p>
-
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="ghost" onClick={() => setShowDeleteDialog(false)}>
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => {
-                if (currentProject) {
-                  moveProjectToTrash(currentProject.id);
-                  setShowDeleteDialog(false);
-                }
-              }}
-              data-testid="confirm-delete-project"
-            >
-              <Trash2 className="w-4 h-4 mr-2" />
-              Move to Trash
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DeleteProjectDialog
+        open={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
+        project={currentProject}
+        onConfirm={moveProjectToTrash}
+      />
     </div>
   );
 }
