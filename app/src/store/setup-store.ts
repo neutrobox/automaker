@@ -23,7 +23,7 @@ export interface ClaudeAuthStatus {
 // Codex Auth Status
 export interface CodexAuthStatus {
   authenticated: boolean;
-  method: "api_key" | "env" | "none";
+  method: "api_key" | "env" | "cli_verified" | "cli_tokens" | "none";
   apiKeyValid?: boolean;
   mcpConfigured?: boolean;
   error?: string;

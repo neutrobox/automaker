@@ -198,7 +198,7 @@ export interface ElectronAPI {
       path?: string;
       auth?: {
         authenticated: boolean;
-        method: string;
+        method: string; // Can be: "cli_verified", "cli_tokens", "auth_file", "env_var", "none"
         hasAuthFile: boolean;
         hasEnvKey: boolean;
         hasStoredApiKey?: boolean;
@@ -561,7 +561,7 @@ interface SetupAPI {
     path?: string;
     auth?: {
       authenticated: boolean;
-      method: string;
+      method: string; // Can be: "cli_verified", "cli_tokens", "auth_file", "env_var", "none"
       hasAuthFile: boolean;
       hasEnvKey: boolean;
       hasStoredApiKey?: boolean;

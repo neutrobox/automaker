@@ -72,38 +72,109 @@ class CodexCliDetector {
 
       // Check if auth file exists
       if (fs.existsSync(authPath)) {
-        const content = fs.readFileSync(authPath, 'utf-8');
-        const auth = JSON.parse(content);
+        console.log('[CodexCliDetector] Auth file exists, reading content...');
+        let auth = null;
+        try {
+          const content = fs.readFileSync(authPath, 'utf-8');
+          auth = JSON.parse(content);
+          console.log('[CodexCliDetector] Auth file content keys:', Object.keys(auth));
+          console.log('[CodexCliDetector] Auth file has token object:', !!auth.token);
+          if (auth.token) {
+            console.log('[CodexCliDetector] Token object keys:', Object.keys(auth.token));
+          }
 
-        // Check for token object structure (from codex auth login)
-        // Structure: { token: { Id_token, access_token, refresh_token }, last_refresh: ... }
-        if (auth.token && typeof auth.token === 'object') {
-          const token = auth.token;
-          if (token.Id_token || token.access_token || token.refresh_token || token.id_token) {
-            return {
+          // Check for token object structure (from codex auth login)
+          // Structure: { token: { Id_token, access_token, refresh_token }, last_refresh: ... }
+          if (auth.token && typeof auth.token === 'object') {
+            const token = auth.token;
+            if (token.Id_token || token.access_token || token.refresh_token || token.id_token) {
+              const result = {
+                authenticated: true,
+                method: 'cli_tokens', // Distinguish token-based auth from API key auth
+                hasAuthFile: true,
+                hasEnvKey: !!envApiKey,
+                authPath
+              };
+              console.log('[CodexCliDetector] Auth result (cli_tokens):', result);
+              return result;
+            }
+          }
+
+          // Check for tokens at root level (alternative structure)
+          if (auth.access_token || auth.refresh_token || auth.Id_token || auth.id_token) {
+            const result = {
+              authenticated: true,
+              method: 'cli_tokens', // These are tokens, not API keys
+              hasAuthFile: true,
+              hasEnvKey: !!envApiKey,
+              authPath
+            };
+            console.log('[CodexCliDetector] Auth result (cli_tokens - root level):', result);
+            return result;
+          }
+
+          // Check for various possible API key fields that codex might use
+          // Note: access_token is NOT an API key, it's a token, so we check for it above
+          if (auth.api_key || auth.openai_api_key || auth.apiKey) {
+            const result = {
               authenticated: true,
               method: 'auth_file',
               hasAuthFile: true,
               hasEnvKey: !!envApiKey,
               authPath
             };
+            console.log('[CodexCliDetector] Auth result (auth_file - API key):', result);
+            return result;
           }
-        }
-
-        // Check for various possible auth fields that codex might use
-        if (auth.api_key || auth.openai_api_key || auth.access_token || auth.apiKey) {
+        } catch (error) {
+          console.error('[CodexCliDetector] Error reading/parsing auth file:', error.message);
+          // If we can't parse the file, we can't determine auth status
           return {
-            authenticated: true,
-            method: 'auth_file',
-            hasAuthFile: true,
+            authenticated: false,
+            method: 'none',
+            hasAuthFile: false,
             hasEnvKey: !!envApiKey,
             authPath
           };
         }
 
         // Also check if the file has any meaningful content (non-empty object)
+        // This is a fallback - but we should still try to detect if it's tokens
+        if (!auth) {
+          // File exists but couldn't be parsed
+          return {
+            authenticated: false,
+            method: 'none',
+            hasAuthFile: true,
+            hasEnvKey: !!envApiKey,
+            authPath
+          };
+        }
+        
         const keys = Object.keys(auth);
+        console.log('[CodexCliDetector] File has content, keys:', keys);
         if (keys.length > 0) {
+          // Check again for tokens in case we missed them (maybe nested differently)
+          const hasTokens = keys.some(key => 
+            key.toLowerCase().includes('token') || 
+            key.toLowerCase().includes('refresh') ||
+            (auth[key] && typeof auth[key] === 'object' && (
+              auth[key].access_token || auth[key].refresh_token || auth[key].Id_token || auth[key].id_token
+            ))
+          );
+          
+          if (hasTokens) {
+            const result = {
+              authenticated: true,
+              method: 'cli_tokens',
+              hasAuthFile: true,
+              hasEnvKey: !!envApiKey,
+              authPath
+            };
+            console.log('[CodexCliDetector] Auth result (cli_tokens - fallback detection):', result);
+            return result;
+          }
+          
           // File exists and has content, likely authenticated
           // Try to verify by checking if codex command works
           try {
@@ -116,34 +187,45 @@ class CodexCliDetector {
                   timeout: 3000 
                 });
                 // If command succeeds, assume authenticated
-                return {
+                // But check if it's likely tokens vs API key based on file structure
+                const likelyTokens = keys.some(key => key.toLowerCase().includes('token') || key.toLowerCase().includes('refresh'));
+                const result = {
                   authenticated: true,
-                  method: 'auth_file',
+                  method: likelyTokens ? 'cli_tokens' : 'auth_file',
                   hasAuthFile: true,
                   hasEnvKey: !!envApiKey,
                   authPath
                 };
+                console.log('[CodexCliDetector] Auth result (verified via CLI, method:', result.method, '):', result);
+                return result;
               } catch (cmdError) {
                 // Command failed, but file exists - might still be authenticated
-                // Return authenticated if file has content
-                return {
+                // Check if it's likely tokens
+                const likelyTokens = keys.some(key => key.toLowerCase().includes('token') || key.toLowerCase().includes('refresh'));
+                const result = {
                   authenticated: true,
-                  method: 'auth_file',
+                  method: likelyTokens ? 'cli_tokens' : 'auth_file',
                   hasAuthFile: true,
                   hasEnvKey: !!envApiKey,
                   authPath
                 };
+                console.log('[CodexCliDetector] Auth result (file exists, method:', result.method, '):', result);
+                return result;
               }
             }
           } catch (verifyError) {
             // Verification failed, but file exists with content
-            return {
+            // Check if it's likely tokens
+            const likelyTokens = keys.some(key => key.toLowerCase().includes('token') || key.toLowerCase().includes('refresh'));
+            const result = {
               authenticated: true,
-              method: 'auth_file',
+              method: likelyTokens ? 'cli_tokens' : 'auth_file',
               hasAuthFile: true,
               hasEnvKey: !!envApiKey,
               authPath
             };
+            console.log('[CodexCliDetector] Auth result (fallback, method:', result.method, '):', result);
+            return result;
           }
         }
       }

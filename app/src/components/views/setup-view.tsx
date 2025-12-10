@@ -11,7 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { useSetupStore } from "@/store/setup-store";
+import { useSetupStore, type CodexAuthStatus } from "@/store/setup-store";
 import { useAppStore } from "@/store/app-store";
 import { getElectronAPI } from "@/lib/electron";
 import {
@@ -805,13 +805,22 @@ function CodexSetupStep({
           setCodexCliStatus(cliStatus);
 
           if (result.auth) {
-            const authStatus = {
+            const method = result.auth.method === "cli_verified" || result.auth.method === "cli_tokens"
+              ? (result.auth.method === "cli_verified" ? "cli_verified" : "cli_tokens")
+              : result.auth.method === "auth_file" 
+              ? "api_key" 
+              : result.auth.method === "env_var" 
+              ? "env" 
+              : "none";
+            
+            const authStatus: CodexAuthStatus = {
               authenticated: result.auth.authenticated,
-              method: result.auth.method === "auth_file" ? "api_key" : result.auth.method === "env_var" ? "env" : "none",
-              apiKeyValid: result.auth.authenticated,
+              method,
+              // Only set apiKeyValid for actual API key methods, not CLI login
+              apiKeyValid: method === "cli_verified" || method === "cli_tokens" ? undefined : result.auth.authenticated,
             };
             console.log("[Codex Setup] Auth Status:", authStatus);
-            setCodexAuthStatus(authStatus as any);
+            setCodexAuthStatus(authStatus);
           } else {
             console.log("[Codex Setup] No auth info in result");
           }

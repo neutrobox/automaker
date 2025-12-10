@@ -238,10 +238,20 @@ export function SettingsView() {
           const result = await api.setup.getCodexStatus();
           if (result.success && result.auth) {
             const auth = result.auth;
+            // Determine method - prioritize cli_verified and cli_tokens over auth_file
+            const method = auth.method === "cli_verified" || auth.method === "cli_tokens"
+              ? auth.method === "cli_verified" ? "cli_verified" : "cli_tokens"
+              : auth.method === "auth_file" 
+              ? "api_key" 
+              : auth.method === "env_var" 
+              ? "env" 
+              : "none";
+            
             const authStatus: CodexAuthStatus = {
               authenticated: auth.authenticated,
-              method: auth.hasEnvApiKey ? "env" : auth.hasStoredApiKey ? "api_key" : "none",
-              apiKeyValid: auth.hasStoredApiKey || auth.hasEnvApiKey,
+              method,
+              // Only set apiKeyValid for actual API key methods, not CLI login
+              apiKeyValid: method === "cli_verified" || method === "cli_tokens" ? undefined : (auth.hasAuthFile || auth.hasEnvKey),
             };
             setCodexAuthStatus(authStatus);
           }
@@ -932,7 +942,9 @@ export function SettingsView() {
                               <span className="text-muted-foreground">
                                 Method:{" "}
                                 <span className="font-mono text-foreground">
-                                  {codexAuthStatus.method === "api_key"
+                                  {codexAuthStatus.method === "cli_verified" || codexAuthStatus.method === "cli_tokens"
+                                    ? "CLI Login (OpenAI Account)"
+                                    : codexAuthStatus.method === "api_key"
                                     ? "API Key (Auth File)"
                                     : codexAuthStatus.method === "env"
                                     ? "API Key (Environment)"
@@ -940,12 +952,17 @@ export function SettingsView() {
                                 </span>
                               </span>
                             </div>
-                            {codexAuthStatus.apiKeyValid && (
+                            {codexAuthStatus.method === "cli_verified" || codexAuthStatus.method === "cli_tokens" ? (
+                              <div className="flex items-center gap-2 text-green-400">
+                                <CheckCircle2 className="w-3 h-3 shrink-0" />
+                                <span>Account authenticated</span>
+                              </div>
+                            ) : codexAuthStatus.apiKeyValid ? (
                               <div className="flex items-center gap-2 text-green-400">
                                 <CheckCircle2 className="w-3 h-3 shrink-0" />
                                 <span>API key configured</span>
                               </div>
-                            )}
+                            ) : null}
                             {apiKeyStatus?.hasOpenAIKey && (
                               <div className="flex items-center gap-2 text-blue-400">
                                 <Info className="w-3 h-3 shrink-0" />
