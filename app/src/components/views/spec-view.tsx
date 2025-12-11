@@ -302,44 +302,29 @@ export function SpecView() {
         setLogs(newLog);
         console.log("[SpecView] Tool:", event.tool, event.input);
       } else if (event.type === "spec_regeneration_complete") {
-        // Add completion message to logs first (before checking)
+        // Add completion message to logs first
         const completionLog = logsRef.current + `\n[Complete] ${event.message}\n`;
         logsRef.current = completionLog;
         setLogs(completionLog);
         
         // --- Completion Detection Logic ---
-        // Check 1: Message explicitly indicates all tasks are done
+        // The backend sends explicit signals for completion:
+        // 1. "All tasks completed" in the message
+        // 2. [Phase: complete] marker in logs
         const isFinalCompletionMessage = event.message?.includes("All tasks completed") ||
                                          event.message === "All tasks completed!" ||
                                          event.message === "All tasks completed";
         
-        // Check 2: We've seen a [Phase: complete] marker in the logs
         const hasCompletePhase = logsRef.current.includes("[Phase: complete]");
         
-        // Check 3: Feature generation has finished (no recent activity and not actively generating)
-        const recentLogs = logsRef.current.slice(-2000);
-        const hasRecentFeatureActivity = recentLogs.includes("Feature Creation") ||
-                                         recentLogs.includes("Creating feature") ||
-                                         recentLogs.includes("UpdateFeatureStatus");
-        const isStillGeneratingFeatures = !isFinalCompletionMessage && 
-                                          !hasCompletePhase &&
-                                          (event.message?.includes("Features are being generated") || 
-                                           event.message?.includes("features are being generated"));
-        const isFeatureGenerationComplete = currentPhase === "feature_generation" && 
-                                            !hasRecentFeatureActivity && 
-                                            !isStillGeneratingFeatures;
-        
-        // Determine if we should mark everything as complete
-        const shouldComplete = isFinalCompletionMessage || hasCompletePhase || isFeatureGenerationComplete;
+        // Rely solely on explicit backend signals
+        const shouldComplete = isFinalCompletionMessage || hasCompletePhase;
         
         if (shouldComplete) {
           // Fully complete - clear all states immediately
           console.log("[SpecView] Final completion detected - clearing state", { 
             isFinalCompletionMessage, 
             hasCompletePhase, 
-            isFeatureGenerationComplete,
-            hasRecentFeatureActivity,
-            currentPhase,
             message: event.message 
           });
           setIsRegenerating(false);
@@ -359,11 +344,7 @@ export function SpecView() {
           setIsCreating(true);
           setIsRegenerating(true);
           setCurrentPhase("feature_generation");
-          console.log("[SpecView] Spec complete, continuing with feature generation", {
-            isStillGeneratingFeatures,
-            hasRecentFeatureActivity,
-            currentPhase
-          });
+          console.log("[SpecView] Intermediate completion, continuing with feature generation");
         }
         
         console.log("[SpecView] Spec generation event:", event.message);
