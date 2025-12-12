@@ -399,7 +399,7 @@ ${Object.entries(projectAnalysis.filesByExtension)
 `;
 
       // Write the spec file
-      const specPath = `${currentProject.path}/app_spec.txt`;
+      const specPath = `${currentProject.path}/.automaker/app_spec.txt`;
       const writeResult = await api.writeFile(specPath, specContent);
 
       if (writeResult.success) {

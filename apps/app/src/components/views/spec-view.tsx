@@ -14,7 +14,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Save, RefreshCw, FileText, Sparkles, Loader2, FilePlus2, AlertCircle, ListPlus } from "lucide-react";
+import { Save, RefreshCw, FileText, Sparkles, Loader2, FilePlus2, AlertCircle, ListPlus, CheckCircle2 } from "lucide-react";
+import { toast } from "sonner";
 import { Checkbox } from "@/components/ui/checkbox";
 import { XmlSyntaxEditor } from "@/components/ui/xml-syntax-editor";
 import type { SpecRegenerationEvent } from "@/types/electron";
@@ -311,14 +312,22 @@ export function SpecView() {
         // The backend sends explicit signals for completion:
         // 1. "All tasks completed" in the message
         // 2. [Phase: complete] marker in logs
+        // 3. "Spec regeneration complete!" for regeneration
+        // 4. "Initial spec creation complete!" for creation without features
         const isFinalCompletionMessage = event.message?.includes("All tasks completed") ||
                                          event.message === "All tasks completed!" ||
-                                         event.message === "All tasks completed";
+                                         event.message === "All tasks completed" ||
+                                         event.message === "Spec regeneration complete!" ||
+                                         event.message === "Initial spec creation complete!";
         
         const hasCompletePhase = logsRef.current.includes("[Phase: complete]");
         
+        // Intermediate completion means features are being generated after spec creation
+        const isIntermediateCompletion = event.message?.includes("Features are being generated") ||
+                                         event.message?.includes("features are being generated");
+        
         // Rely solely on explicit backend signals
-        const shouldComplete = isFinalCompletionMessage || hasCompletePhase;
+        const shouldComplete = (isFinalCompletionMessage || hasCompletePhase) && !isIntermediateCompletion;
         
         if (shouldComplete) {
           // Fully complete - clear all states immediately
@@ -337,9 +346,29 @@ export function SpecView() {
           setProjectOverview("");
           setErrorMessage("");
           stateRestoredRef.current = false;
-          // Reload the spec to show the new content
-          loadSpec();
-        } else {
+          
+          // Reload the spec with delay to ensure file is written to disk
+          setTimeout(() => {
+            loadSpec();
+          }, SPEC_FILE_WRITE_DELAY);
+          
+          // Show success toast notification
+          const isRegeneration = event.message?.includes("regeneration");
+          const isFeatureGeneration = event.message?.includes("Feature generation");
+          toast.success(
+            isFeatureGeneration 
+              ? "Feature Generation Complete" 
+              : isRegeneration 
+                ? "Spec Regeneration Complete" 
+                : "Spec Creation Complete",
+            {
+              description: isFeatureGeneration 
+                ? "Features have been created from the app specification."
+                : "Your app specification has been saved.",
+              icon: <CheckCircle2 className="w-4 h-4" />,
+            }
+          );
+        } else if (isIntermediateCompletion) {
           // Intermediate completion - keep state active for feature generation
           setIsCreating(true);
           setIsRegenerating(true);

@@ -40,6 +40,8 @@ export function useCliStatus({
               "oauth_token",
               "api_key",
               "api_key_env",
+              "credentials_file",
+              "cli_authenticated",
               "none",
             ] as const;
             type AuthMethod = (typeof validMethods)[number];

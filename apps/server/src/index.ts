@@ -39,30 +39,30 @@ const PORT = parseInt(process.env.PORT || "3008", 10);
 const DATA_DIR = process.env.DATA_DIR || "./data";
 
 // Check for required environment variables
+// Claude Agent SDK supports EITHER OAuth token (subscription) OR API key (pay-per-use)
 const hasAnthropicKey = !!process.env.ANTHROPIC_API_KEY;
 const hasOAuthToken = !!process.env.CLAUDE_CODE_OAUTH_TOKEN;
 
-if (!hasAnthropicKey) {
+if (!hasAnthropicKey && !hasOAuthToken) {
   console.warn(`
 ╔═══════════════════════════════════════════════════════════════════════╗
-║  ⚠️  WARNING: ANTHROPIC_API_KEY not set                                ║
+║  ⚠️  WARNING: No Claude authentication configured                      ║
 ║                                                                       ║
-║  The Claude Agent SDK requires ANTHROPIC_API_KEY to function.         ║
-║  ${
-    hasOAuthToken
-      ? "  You have CLAUDE_CODE_OAUTH_TOKEN set - this is for CLI auth only."
-      : ""
-  }
+║  The Claude Agent SDK requires authentication to function.            ║
 ║                                                                       ║
-║  Set your API key:                                                    ║
+║  Option 1 - Subscription (OAuth Token):                               ║
+║    export CLAUDE_CODE_OAUTH_TOKEN="your-oauth-token"                  ║
+║                                                                       ║
+║  Option 2 - Pay-per-use (API Key):                                    ║
 ║    export ANTHROPIC_API_KEY="sk-ant-..."                              ║
 ║                                                                       ║
-║  Or add to apps/server/.env:                                          ║
-║    ANTHROPIC_API_KEY=sk-ant-...                                       ║
+║  Or use the setup wizard in Settings to configure authentication.     ║
 ╚═══════════════════════════════════════════════════════════════════════╝
 `);
+} else if (hasOAuthToken) {
+  console.log("[Server] ✓ CLAUDE_CODE_OAUTH_TOKEN detected (subscription auth)");
 } else {
-  console.log("[Server] ✓ ANTHROPIC_API_KEY detected");
+  console.log("[Server] ✓ ANTHROPIC_API_KEY detected (API key auth)");
 }
 
 // Initialize security

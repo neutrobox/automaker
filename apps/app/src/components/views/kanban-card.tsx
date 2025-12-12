@@ -207,10 +207,12 @@ export const KanbanCard = memo(function KanbanCard({
   // - Backlog items can always be dragged
   // - skipTests items can be dragged even when in_progress or verified (unless currently running)
   // - waiting_approval items can always be dragged (to allow manual verification via drag)
-  // - Non-skipTests (TDD) items in progress or verified cannot be dragged
+  // - verified items can always be dragged (to allow moving back to waiting_approval or backlog)
+  // - Non-skipTests (TDD) items in progress cannot be dragged (they are running)
   const isDraggable =
     feature.status === "backlog" ||
     feature.status === "waiting_approval" ||
+    feature.status === "verified" ||
     (feature.skipTests && !isCurrentAutoTask);
   const {
     attributes,

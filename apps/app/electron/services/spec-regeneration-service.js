@@ -588,7 +588,7 @@ You should:
 4. Based on the user's project overview, create a comprehensive app specification
 5. Be liberal and comprehensive when defining features - include everything needed for a complete, polished application
 6. Use the XML template format provided
-7. Write the specification to .automaker/app_spec.txt
+7. **MANDATORY: Write the spec to EXACTLY \`.automaker/app_spec.txt\` - this exact filename, no alternatives**
 
 When analyzing, look at:
 - package.json, cargo.toml, requirements.txt or similar config files for tech stack
@@ -598,11 +598,17 @@ When analyzing, look at:
 - API structures and patterns
 
 You CAN and SHOULD modify:
-- .automaker/app_spec.txt (this is your primary target)
+- .automaker/app_spec.txt (this is your ONLY target file - use EXACTLY this filename)
 
-You have access to file reading, writing, and search tools. Use them to understand the codebase and write the new spec.
+You have access to file reading, writing, and search tools. Use them to understand the codebase and WRITE the new spec to .automaker/app_spec.txt.
 
-**IMPORTANT:** Focus ONLY on creating the app_spec.txt file. Do NOT create any feature files or use any feature management tools during this phase.`;
+**IMPORTANT:** Focus ONLY on creating the app_spec.txt file. Do NOT create any feature files or use any feature management tools during this phase.
+
+**CRITICAL FILE NAMING RULES:**
+- The spec file MUST be named exactly \`app_spec.txt\`
+- Do NOT create project-spec.md, spec.md, or any other filename
+- Do NOT use markdown (.md) extension - use .txt
+- The full path must be: \`.automaker/app_spec.txt\``;
   }
 
   /**
@@ -639,7 +645,11 @@ ${APP_SPEC_XML_TEMPLATE}
    - **development_workflow**: Note any testing or development patterns
    - **implementation_roadmap**: Break down the features into phases - be VERY detailed here, listing every feature that needs to be built
 
-4. **IMPORTANT**: Write the complete specification to the file \`.automaker/app_spec.txt\`
+4. **MANDATORY FILE WRITE**: You MUST write the spec to EXACTLY this file path: \`.automaker/app_spec.txt\`
+   - The filename MUST be exactly \`app_spec.txt\` - do NOT use any other name
+   - Do NOT create \`project-spec.md\`, \`spec.md\`, or any other filename
+   - Do NOT output the spec in your response - write it to the file
+   - Use the Write tool with path \`.automaker/app_spec.txt\`
 
 **Guidelines:**
 - Be comprehensive! Include ALL features needed for a complete application
@@ -648,8 +658,9 @@ ${APP_SPEC_XML_TEMPLATE}
 - The implementation_roadmap should reflect logical phases for building out the app - list EVERY feature individually
 - Consider user flows, error states, and edge cases when defining features
 - Each phase should have multiple specific, actionable features
+- **CRITICAL: Write to EXACTLY \`.automaker/app_spec.txt\` - not project-spec.md or any other name!**
 
-Begin by exploring the project structure.`;
+Begin by exploring the project structure, then generate and WRITE the spec to \`.automaker/app_spec.txt\`.`;
   }
 
   /**
@@ -848,7 +859,7 @@ You should:
 3. Understand the current architecture and patterns used
 4. Based on the user's project definition, create a comprehensive app specification that includes ALL features needed to realize their vision
 5. Be liberal and comprehensive when defining features - include everything needed for a complete, polished application
-6. Write the specification to .automaker/app_spec.txt
+6. **MANDATORY: Write the spec to EXACTLY \`.automaker/app_spec.txt\` - this exact filename, no alternatives**
 
 When analyzing, look at:
 - package.json, cargo.toml, or similar config files for tech stack
@@ -861,9 +872,15 @@ When analyzing, look at:
 Your task is ONLY to update the app_spec.txt file - feature files will be managed separately.
 
 You CAN and SHOULD modify:
-- .automaker/app_spec.txt (this is your primary target)
+- .automaker/app_spec.txt (this is your ONLY target file - use EXACTLY this filename)
 
-You have access to file reading, writing, and search tools. Use them to understand the codebase and write the new spec.`;
+You have access to file reading, writing, and search tools. Use them to understand the codebase and WRITE the new spec to .automaker/app_spec.txt.
+
+**CRITICAL FILE NAMING RULES:**
+- The spec file MUST be named exactly \`app_spec.txt\`
+- Do NOT create project-spec.md, spec.md, or any other filename
+- Do NOT use markdown (.md) extension - use .txt
+- The full path must be: \`.automaker/app_spec.txt\``;
   }
 
   /**
@@ -892,37 +909,40 @@ ${projectDefinition}
      - Think about user experience, error handling, edge cases, etc.
    - Architecture Notes: Any important architectural decisions or patterns
 
-3. **IMPORTANT**: Write the complete specification to the file \`.automaker/app_spec.txt\`
+3. **MANDATORY FILE WRITE**: You MUST write the spec to EXACTLY this file path: \`.automaker/app_spec.txt\`
+   - The filename MUST be exactly \`app_spec.txt\` - do NOT use any other name
+   - Do NOT create \`project-spec.md\`, \`spec.md\`, or any other filename
+   - Do NOT output the spec in your response - write it to the file
+   - Use the Write tool with path \`.automaker/app_spec.txt\`
 
-**Format Guidelines for the Spec:**
+**Format Guidelines for the Spec (use XML format in app_spec.txt):**
 
-Use this general structure:
+Use this XML structure inside app_spec.txt:
 
-\`\`\`
-# [App Name] - Application Specification
-
-## Product Overview
-[Description of what the app does and its purpose]
-
-## Tech Stack
-- Frontend: [frameworks, libraries]
-- Backend: [frameworks, APIs]
-- Database: [if applicable]
-- Other: [other relevant tech]
-
-## Features
-
-### [Category 1]
-- **[Feature Name]**: [Detailed description of the feature]
-- **[Feature Name]**: [Detailed description]
-...
-
-### [Category 2]
-- **[Feature Name]**: [Detailed description]
-...
-
-## Architecture Notes
-[Any important architectural notes, patterns, or conventions]
+\`\`\`xml
+<project_specification>
+  <project_name>[App Name]</project_name>
+  
+  <overview>
+    [Description of what the app does and its purpose]
+  </overview>
+  
+  <technology_stack>
+    <frontend>[frameworks, libraries]</frontend>
+    <backend>[frameworks, APIs]</backend>
+    <database>[if applicable]</database>
+  </technology_stack>
+  
+  <core_capabilities>
+    [List all the major capabilities]
+  </core_capabilities>
+  
+  <implementation_roadmap>
+    <phase_1>[Foundation features]</phase_1>
+    <phase_2>[Core features]</phase_2>
+    <phase_3>[Polish features]</phase_3>
+  </implementation_roadmap>
+</project_specification>
 \`\`\`
 
 **Remember:**
@@ -930,9 +950,9 @@ Use this general structure:
 - Consider user flows, error states, loading states, etc.
 - Include authentication, authorization if relevant
 - Think about what would make this a polished, production-ready app
-- The more detailed and complete the spec, the better
+- **CRITICAL: Write to EXACTLY \`.automaker/app_spec.txt\` - not project-spec.md or any other name!**
 
-Begin by exploring the project structure.`;
+Begin by exploring the project structure, then generate and WRITE the spec to \`.automaker/app_spec.txt\`.`;
   }
 
   /**

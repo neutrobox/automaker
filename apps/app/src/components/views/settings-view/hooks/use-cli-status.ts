@@ -74,8 +74,8 @@ export function useCliStatus() {
               apiKeyValid?: boolean;
             };
             // Map server method names to client method types
-            // Server returns: oauth_token_env, oauth_token, api_key_env, api_key, credentials_file, none
-            const validMethods = ["oauth_token_env", "oauth_token", "api_key", "api_key_env", "credentials_file", "none"] as const;
+            // Server returns: oauth_token_env, oauth_token, api_key_env, api_key, credentials_file, cli_authenticated, none
+            const validMethods = ["oauth_token_env", "oauth_token", "api_key", "api_key_env", "credentials_file", "cli_authenticated", "none"] as const;
             type AuthMethod = typeof validMethods[number];
             const method: AuthMethod = validMethods.includes(auth.method as AuthMethod)
               ? (auth.method as AuthMethod)

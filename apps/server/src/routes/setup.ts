@@ -107,12 +107,14 @@ export function createSetupRoutes(): Router {
       }
 
       // Check authentication - detect all possible auth methods
+      // Note: apiKeys.anthropic_oauth_token stores OAuth tokens from subscription auth
+      //       apiKeys.anthropic stores direct API keys for pay-per-use
       let auth = {
         authenticated: false,
         method: "none" as string,
         hasCredentialsFile: false,
         hasToken: false,
-        hasStoredOAuthToken: false,
+        hasStoredOAuthToken: !!apiKeys.anthropic_oauth_token,
         hasStoredApiKey: !!apiKeys.anthropic,
         hasEnvApiKey: !!process.env.ANTHROPIC_API_KEY,
         hasEnvOAuthToken: !!process.env.CLAUDE_CODE_OAUTH_TOKEN,
@@ -199,9 +201,17 @@ export function createSetupRoutes(): Router {
         auth.method = "api_key_env"; // API key from ANTHROPIC_API_KEY env var
       }
 
-      // In-memory stored API key (from settings UI)
+      // In-memory stored OAuth token (from setup wizard - subscription auth)
+      if (!auth.authenticated && apiKeys.anthropic_oauth_token) {
+        auth.authenticated = true;
+        auth.oauthTokenValid = true;
+        auth.method = "oauth_token"; // Stored OAuth token from setup wizard
+      }
+
+      // In-memory stored API key (from settings UI - pay-per-use)
       if (!auth.authenticated && apiKeys.anthropic) {
         auth.authenticated = true;
+        auth.apiKeyValid = true;
         auth.method = "api_key"; // Manually stored API key
       }
 
@@ -393,9 +403,19 @@ export function createSetupRoutes(): Router {
       apiKeys[provider] = apiKey;
 
       // Also set as environment variable and persist to .env
-      if (provider === "anthropic" || provider === "anthropic_oauth_token") {
+      // IMPORTANT: OAuth tokens and API keys must be stored separately
+      // - OAuth tokens (subscription auth) -> CLAUDE_CODE_OAUTH_TOKEN
+      // - API keys (pay-per-use) -> ANTHROPIC_API_KEY
+      if (provider === "anthropic_oauth_token") {
+        // OAuth token from claude setup-token (subscription-based auth)
+        process.env.CLAUDE_CODE_OAUTH_TOKEN = apiKey;
+        await persistApiKeyToEnv("CLAUDE_CODE_OAUTH_TOKEN", apiKey);
+        console.log("[Setup] Stored OAuth token as CLAUDE_CODE_OAUTH_TOKEN");
+      } else if (provider === "anthropic") {
+        // Direct API key (pay-per-use)
         process.env.ANTHROPIC_API_KEY = apiKey;
         await persistApiKeyToEnv("ANTHROPIC_API_KEY", apiKey);
+        console.log("[Setup] Stored API key as ANTHROPIC_API_KEY");
       } else if (provider === "openai") {
         process.env.OPENAI_API_KEY = apiKey;
         await persistApiKeyToEnv("OPENAI_API_KEY", apiKey);

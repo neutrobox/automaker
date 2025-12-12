@@ -17,6 +17,7 @@ export type ClaudeAuthMethod =
   | "api_key_env"        // ANTHROPIC_API_KEY environment variable
   | "api_key"            // Manually stored API key
   | "credentials_file"   // Generic credentials file detection
+  | "cli_authenticated"  // Claude CLI is installed and has active sessions/activity
   | "none";
 
 // Claude Auth Status

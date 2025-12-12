@@ -61,13 +61,15 @@ export function AuthenticationStatusDisplay({
                     {claudeAuthStatus.method === "oauth_token_env"
                       ? "Using CLAUDE_CODE_OAUTH_TOKEN"
                       : claudeAuthStatus.method === "oauth_token"
-                      ? "Using stored OAuth token (claude login)"
+                      ? "Using stored OAuth token (subscription)"
                       : claudeAuthStatus.method === "api_key_env"
                       ? "Using ANTHROPIC_API_KEY"
                       : claudeAuthStatus.method === "api_key"
                       ? "Using stored API key"
                       : claudeAuthStatus.method === "credentials_file"
                       ? "Using credentials file"
+                      : claudeAuthStatus.method === "cli_authenticated"
+                      ? "Using Claude CLI authentication"
                       : `Using ${claudeAuthStatus.method || "detected"} authentication`}
                   </span>
                 </div>
