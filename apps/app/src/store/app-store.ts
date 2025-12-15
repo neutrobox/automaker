@@ -277,7 +277,12 @@ export interface Feature {
   category: string;
   description: string;
   steps: string[];
-  status: "backlog" | "in_progress" | "waiting_approval" | "verified";
+  status:
+    | "backlog"
+    | "in_progress"
+    | "waiting_approval"
+    | "verified"
+    | "completed";
   images?: FeatureImage[];
   imagePaths?: FeatureImagePath[]; // Paths to temp files for agent context
   startedAt?: string; // ISO timestamp for when the card moved to in_progress
