@@ -14,8 +14,8 @@ export interface ResponsiveKanbanConfig {
  */
 const DEFAULT_CONFIG: ResponsiveKanbanConfig = {
   columnWidth: 288, // 18rem = 288px (w-72)
-  columnMinWidth: 280, // Minimum column width - increased to ensure usability
-  columnMaxWidth: 360, // Maximum column width to ensure responsive scaling
+  columnMinWidth: 280, // Minimum column width - ensures usability
+  columnMaxWidth: Infinity, // No max width - columns scale evenly to fill viewport
   gap: 20, // gap-5 = 20px
   padding: 40, // px-5 on both sides = 40px (matches gap between columns)
 };
