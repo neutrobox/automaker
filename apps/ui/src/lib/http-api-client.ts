@@ -225,10 +225,11 @@ export class HttpApiClient implements ElectronAPI {
     // Build VS Code URL scheme: vscode://file/path:line:column
     // This works on systems where VS Code's URL handler is registered
     // URL encode the path to handle special characters (spaces, brackets, etc.)
-    // but preserve the leading slash for absolute paths
-    const encodedPath = filePath.startsWith('/')
-      ? '/' + filePath.slice(1).split('/').map(encodeURIComponent).join('/')
-      : filePath.split('/').map(encodeURIComponent).join('/');
+    // Handle both Unix (/) and Windows (\) path separators
+    const normalizedPath = filePath.replace(/\\/g, '/');
+    const encodedPath = normalizedPath.startsWith('/')
+      ? '/' + normalizedPath.slice(1).split('/').map(encodeURIComponent).join('/')
+      : normalizedPath.split('/').map(encodeURIComponent).join('/');
     let url = `vscode://file${encodedPath}`;
     if (line !== undefined && line > 0) {
       url += `:${line}`;

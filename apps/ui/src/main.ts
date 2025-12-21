@@ -417,9 +417,11 @@ ipcMain.handle("shell:openInEditor", async (_, filePath: string, line?: number, 
     // Build VS Code URL scheme: vscode://file/path:line:column
     // This works on all platforms where VS Code is installed
     // URL encode the path to handle special characters (spaces, brackets, etc.)
-    const encodedPath = filePath.startsWith('/')
-      ? '/' + filePath.slice(1).split('/').map(encodeURIComponent).join('/')
-      : filePath.split('/').map(encodeURIComponent).join('/');
+    // Handle both Unix (/) and Windows (\) path separators
+    const normalizedPath = filePath.replace(/\\/g, '/');
+    const encodedPath = normalizedPath.startsWith('/')
+      ? '/' + normalizedPath.slice(1).split('/').map(encodeURIComponent).join('/')
+      : normalizedPath.split('/').map(encodeURIComponent).join('/');
     let url = `vscode://file${encodedPath}`;
     if (line !== undefined && line > 0) {
       url += `:${line}`;

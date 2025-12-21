@@ -16,7 +16,7 @@ const MAX_SCROLLBACK_SIZE = 50000; // ~50KB per terminal
 
 // Session limit constants - shared with routes/settings.ts
 export const MIN_MAX_SESSIONS = 1;
-export const MAX_MAX_SESSIONS = 500;
+export const MAX_MAX_SESSIONS = 1000;
 
 // Maximum number of concurrent terminal sessions
 // Can be overridden via TERMINAL_MAX_SESSIONS environment variable
