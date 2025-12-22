@@ -71,6 +71,25 @@ export type ThinkingLevel = 'none' | 'low' | 'medium' | 'high' | 'ultrathink';
 export type ModelProvider = 'claude';
 
 /**
+ * WindowBounds - Electron window position and size for persistence
+ *
+ * Stored in global settings to restore window state across sessions.
+ * Includes position (x, y), dimensions (width, height), and maximized state.
+ */
+export interface WindowBounds {
+  /** Window X position on screen */
+  x: number;
+  /** Window Y position on screen */
+  y: number;
+  /** Window width in pixels */
+  width: number;
+  /** Window height in pixels */
+  height: number;
+  /** Whether window was maximized when closed */
+  isMaximized: boolean;
+}
+
+/**
  * KeyboardShortcuts - User-configurable keyboard bindings for common actions
  *
  * Each property maps an action to a keyboard shortcut string
@@ -272,6 +291,10 @@ export interface GlobalSettings {
   // Session Tracking
   /** Maps project path -> last selected session ID in that project */
   lastSelectedSessionByProject: Record<string, string>;
+
+  // Window State (Electron only)
+  /** Persisted window bounds for restoring position/size across sessions */
+  windowBounds?: WindowBounds;
 }
 
 /**

@@ -82,17 +82,18 @@ export function KanbanBoard({
   onArchiveAllVerified,
 }: KanbanBoardProps) {
   // Use responsive column widths based on window size
-  const { columnWidth } = useResponsiveKanban(COLUMNS.length);
+  // containerStyle handles centering and ensures columns fit without horizontal scroll in Electron
+  const { columnWidth, containerStyle } = useResponsiveKanban(COLUMNS.length);
 
   return (
-    <div className="flex-1 overflow-x-auto px-4 pb-4 relative" style={backgroundImageStyle}>
+    <div className="flex-1 overflow-x-hidden px-5 pb-4 relative" style={backgroundImageStyle}>
       <DndContext
         sensors={sensors}
         collisionDetection={collisionDetectionStrategy}
         onDragStart={onDragStart}
         onDragEnd={onDragEnd}
       >
-        <div className="flex gap-5 h-full py-1 justify-center">
+        <div className="h-full py-1" style={containerStyle}>
           {COLUMNS.map((column) => {
             const columnFeatures = getColumnFeatures(column.id);
             return (

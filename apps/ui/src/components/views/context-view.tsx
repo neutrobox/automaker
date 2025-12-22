@@ -1000,6 +1000,33 @@ export function ContextView() {
                 id="markdown-content"
                 value={newMarkdownContent}
                 onChange={(e) => setNewMarkdownContent(e.target.value)}
+                onDrop={async (e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+
+                  // Try files first, then items for better compatibility
+                  let files = Array.from(e.dataTransfer.files);
+                  if (files.length === 0 && e.dataTransfer.items) {
+                    const items = Array.from(e.dataTransfer.items);
+                    files = items
+                      .filter((item) => item.kind === 'file')
+                      .map((item) => item.getAsFile())
+                      .filter((f): f is globalThis.File => f !== null);
+                  }
+
+                  const mdFile = files.find((f) => isMarkdownFile(f.name));
+                  if (mdFile) {
+                    const content = await mdFile.text();
+                    setNewMarkdownContent(content);
+                    if (!newMarkdownName.trim()) {
+                      setNewMarkdownName(mdFile.name);
+                    }
+                  }
+                }}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
                 placeholder="Enter your markdown content here..."
                 className="w-full h-60 p-3 font-mono text-sm bg-background border border-border rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
                 spellCheck={false}

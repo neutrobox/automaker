@@ -19,19 +19,29 @@ export async function simulateFileDrop(
       const dataTransfer = new DataTransfer();
       dataTransfer.items.add(file);
 
+      // Create events and explicitly define the dataTransfer property
+      // to ensure it's accessible (some browsers don't properly set it from constructor)
+      const dragOverEvent = new DragEvent('dragover', {
+        bubbles: true,
+        cancelable: true,
+      });
+      Object.defineProperty(dragOverEvent, 'dataTransfer', {
+        value: dataTransfer,
+        writable: false,
+      });
+
+      const dropEvent = new DragEvent('drop', {
+        bubbles: true,
+        cancelable: true,
+      });
+      Object.defineProperty(dropEvent, 'dataTransfer', {
+        value: dataTransfer,
+        writable: false,
+      });
+
       // Dispatch drag events
-      target.dispatchEvent(
-        new DragEvent('dragover', {
-          dataTransfer,
-          bubbles: true,
-        })
-      );
-      target.dispatchEvent(
-        new DragEvent('drop', {
-          dataTransfer,
-          bubbles: true,
-        })
-      );
+      target.dispatchEvent(dragOverEvent);
+      target.dispatchEvent(dropEvent);
     },
     { selector: targetSelector, content: fileContent, name: fileName, mime: mimeType }
   );

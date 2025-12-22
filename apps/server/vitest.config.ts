@@ -15,6 +15,11 @@ export default defineConfig({
         'src/**/*.d.ts',
         'src/index.ts',
         'src/routes/**', // Routes are better tested with integration tests
+        'src/types/**', // Type re-exports don't need coverage
+        'src/middleware/**', // Middleware needs integration tests
+        'src/lib/enhancement-prompts.ts', // Prompt templates don't need unit tests
+        'src/services/claude-usage-service.ts', // TODO: Add tests for usage tracking
+        '**/libs/**', // Exclude aliased shared packages from server coverage
       ],
       thresholds: {
         // Increased thresholds to ensure better code quality

@@ -307,10 +307,10 @@ describe('claude-provider.ts', () => {
       expect(sonnet35).toBeDefined();
     });
 
-    it('should include Claude 3.5 Haiku', () => {
+    it('should include Claude Haiku 4.5', () => {
       const models = provider.getAvailableModels();
 
-      const haiku = models.find((m) => m.id === 'claude-3-5-haiku-20241022');
+      const haiku = models.find((m) => m.id === 'claude-haiku-4-5-20251001');
       expect(haiku).toBeDefined();
     });
 

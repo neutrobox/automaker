@@ -24,12 +24,12 @@ describe('model-resolver.ts', () => {
   describe('resolveModelString', () => {
     it("should resolve 'haiku' alias to full model string", () => {
       const result = resolveModelString('haiku');
-      expect(result).toBe('claude-haiku-4-5');
+      expect(result).toBe(CLAUDE_MODEL_MAP.haiku);
     });
 
     it("should resolve 'sonnet' alias to full model string", () => {
       const result = resolveModelString('sonnet');
-      expect(result).toBe('claude-sonnet-4-20250514');
+      expect(result).toBe(CLAUDE_MODEL_MAP.sonnet);
     });
 
     it("should resolve 'opus' alias to full model string", () => {
@@ -50,7 +50,7 @@ describe('model-resolver.ts', () => {
     });
 
     it('should pass through full Claude model strings', () => {
-      const models = ['claude-opus-4-5-20251101', 'claude-sonnet-4-20250514', 'claude-haiku-4-5'];
+      const models = [CLAUDE_MODEL_MAP.opus, CLAUDE_MODEL_MAP.sonnet, CLAUDE_MODEL_MAP.haiku];
       models.forEach((model) => {
         const result = resolveModelString(model);
         expect(result).toBe(model);
@@ -93,11 +93,11 @@ describe('model-resolver.ts', () => {
 
     it('should use session model when explicit is not provided', () => {
       const result = getEffectiveModel(undefined, 'sonnet', 'gpt-5.2');
-      expect(result).toBe('claude-sonnet-4-20250514');
+      expect(result).toBe(CLAUDE_MODEL_MAP.sonnet);
     });
 
     it('should use default when neither explicit nor session is provided', () => {
-      const customDefault = 'claude-haiku-4-5';
+      const customDefault = CLAUDE_MODEL_MAP.haiku;
       const result = getEffectiveModel(undefined, undefined, customDefault);
       expect(result).toBe(customDefault);
     });
@@ -109,7 +109,7 @@ describe('model-resolver.ts', () => {
 
     it('should handle explicit empty strings as undefined', () => {
       const result = getEffectiveModel('', 'haiku');
-      expect(result).toBe('claude-haiku-4-5');
+      expect(result).toBe(CLAUDE_MODEL_MAP.haiku);
     });
   });
 

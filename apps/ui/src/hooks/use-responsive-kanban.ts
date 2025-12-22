@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
+import { useAppStore } from '@/store/app-store';
 
 export interface ResponsiveKanbanConfig {
   columnWidth: number;
@@ -13,16 +14,21 @@ export interface ResponsiveKanbanConfig {
  */
 const DEFAULT_CONFIG: ResponsiveKanbanConfig = {
   columnWidth: 288, // 18rem = 288px (w-72)
-  columnMinWidth: 280, // Minimum column width - increased to ensure usability
-  columnMaxWidth: 360, // Maximum column width to ensure responsive scaling
+  columnMinWidth: 280, // Minimum column width - ensures usability
+  columnMaxWidth: Infinity, // No max width - columns scale evenly to fill viewport
   gap: 20, // gap-5 = 20px
-  padding: 32, // px-4 on both sides = 32px
+  padding: 40, // px-5 on both sides = 40px (matches gap between columns)
 };
+
+// Sidebar transition duration (matches sidebar.tsx)
+const SIDEBAR_TRANSITION_MS = 300;
 
 export interface UseResponsiveKanbanResult {
   columnWidth: number;
   containerStyle: React.CSSProperties;
   isCompact: boolean;
+  totalBoardWidth: number;
+  isInitialized: boolean;
 }
 
 /**
@@ -30,9 +36,14 @@ export interface UseResponsiveKanbanResult {
  * Ensures columns scale intelligently to fill available space without
  * dead space on the right or content being cut off.
  *
+ * Features:
+ * - Uses useLayoutEffect to calculate width before paint (prevents bounce)
+ * - Observes actual board container for accurate sizing
+ * - Recalculates after sidebar transitions
+ *
  * @param columnCount - Number of columns in the Kanban board
  * @param config - Optional configuration for column sizing
- * @returns Object with calculated column width and container styles
+ * @returns Object with calculated column width, container styles, and metrics
  */
 export function useResponsiveKanban(
   columnCount: number = 4,
@@ -43,68 +54,129 @@ export function useResponsiveKanban(
     ...config,
   };
 
-  const calculateColumnWidth = useCallback(() => {
-    if (typeof window === 'undefined') {
-      return DEFAULT_CONFIG.columnWidth;
-    }
+  const sidebarOpen = useAppStore((state) => state.sidebarOpen);
+  const resizeTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const [isInitialized, setIsInitialized] = useState(false);
 
-    // Get the actual board container width
-    // The flex layout already accounts for sidebar width, so we use the container's actual width
-    const boardContainer = document.querySelector('[data-testid="board-view"]')?.parentElement;
-    const containerWidth = boardContainer ? boardContainer.clientWidth : window.innerWidth;
+  const calculateColumnWidth = useCallback(
+    (containerWidth?: number) => {
+      if (typeof window === 'undefined') {
+        return DEFAULT_CONFIG.columnWidth;
+      }
 
-    // Get the available width (subtract padding only)
-    const availableWidth = containerWidth - padding;
+      // Get the actual board container width
+      // The flex layout already accounts for sidebar width, so we use the container's actual width
+      let width = containerWidth;
+      if (width === undefined) {
+        const boardContainer = document.querySelector('[data-testid="board-view"]')?.parentElement;
+        width = boardContainer ? boardContainer.clientWidth : window.innerWidth;
+      }
 
-    // Calculate total gap space needed
-    const totalGapWidth = gap * (columnCount - 1);
+      // Get the available width (subtract padding only)
+      const availableWidth = width - padding;
 
-    // Calculate width available for all columns
-    const widthForColumns = availableWidth - totalGapWidth;
+      // Calculate total gap space needed
+      const totalGapWidth = gap * (columnCount - 1);
 
-    // Calculate ideal column width
-    let idealWidth = Math.floor(widthForColumns / columnCount);
+      // Calculate width available for all columns
+      const widthForColumns = availableWidth - totalGapWidth;
 
-    // Clamp to min/max bounds
-    idealWidth = Math.max(columnMinWidth, Math.min(columnMaxWidth, idealWidth));
+      // Calculate ideal column width
+      let idealWidth = Math.floor(widthForColumns / columnCount);
 
-    return idealWidth;
-  }, [columnCount, columnMinWidth, columnMaxWidth, gap, padding]);
+      // Clamp to min/max bounds
+      idealWidth = Math.max(columnMinWidth, Math.min(columnMaxWidth, idealWidth));
+
+      return idealWidth;
+    },
+    [columnCount, columnMinWidth, columnMaxWidth, gap, padding]
+  );
 
   const [columnWidth, setColumnWidth] = useState<number>(() => calculateColumnWidth());
 
+  // Use useLayoutEffect to calculate width synchronously before paint
+  // This prevents the "bounce" effect when navigating to the kanban view
+  useLayoutEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const updateWidth = () => {
+      const newWidth = calculateColumnWidth();
+      setColumnWidth(newWidth);
+      setIsInitialized(true);
+    };
+
+    // Calculate immediately before paint
+    updateWidth();
+  }, [calculateColumnWidth]);
+
+  // Set up ResizeObserver for ongoing resize handling
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const handleResize = () => {
+    const updateWidth = () => {
       const newWidth = calculateColumnWidth();
       setColumnWidth(newWidth);
     };
 
-    // Set initial width
-    handleResize();
+    // Debounced update for smooth resize transitions
+    const scheduleUpdate = () => {
+      if (resizeTimeoutRef.current) {
+        clearTimeout(resizeTimeoutRef.current);
+      }
+      resizeTimeoutRef.current = setTimeout(updateWidth, 50);
+    };
 
-    // Use ResizeObserver for more precise updates if available
-    if (typeof ResizeObserver !== 'undefined') {
-      const observer = new ResizeObserver(handleResize);
-      observer.observe(document.body);
+    // Use ResizeObserver on the actual board container for precise updates
+    let resizeObserver: ResizeObserver | null = null;
+    const boardView = document.querySelector('[data-testid="board-view"]');
+    const container = boardView?.parentElement;
 
-      return () => {
-        observer.disconnect();
-      };
+    if (container && typeof ResizeObserver !== 'undefined') {
+      resizeObserver = new ResizeObserver((entries) => {
+        // Use the observed container's width for calculation
+        const entry = entries[0];
+        if (entry) {
+          const containerWidth = entry.contentRect.width;
+          const newWidth = calculateColumnWidth(containerWidth);
+          setColumnWidth(newWidth);
+        }
+      });
+      resizeObserver.observe(container);
     }
 
     // Fallback to window resize event
-    window.addEventListener('resize', handleResize);
+    window.addEventListener('resize', scheduleUpdate);
+
     return () => {
-      window.removeEventListener('resize', handleResize);
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+      }
+      window.removeEventListener('resize', scheduleUpdate);
+      if (resizeTimeoutRef.current) {
+        clearTimeout(resizeTimeoutRef.current);
+      }
     };
   }, [calculateColumnWidth]);
+
+  // Re-calculate after sidebar transitions complete
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      const newWidth = calculateColumnWidth();
+      setColumnWidth(newWidth);
+    }, SIDEBAR_TRANSITION_MS + 50); // Wait for transition to complete
+
+    return () => clearTimeout(timeout);
+  }, [sidebarOpen, calculateColumnWidth]);
 
   // Determine if we're in compact mode (columns at minimum width)
   const isCompact = columnWidth <= columnMinWidth + 10;
 
-  // Container style to center content and prevent overflow
+  // Calculate total board width for container sizing
+  const totalBoardWidth = columnWidth * columnCount + gap * (columnCount - 1);
+
+  // Container style to center content
+  // Use flex layout with justify-center to naturally center columns
+  // The parent container has px-4 padding which provides equal left/right margins
   const containerStyle: React.CSSProperties = {
     display: 'flex',
     gap: `${gap}px`,
@@ -116,5 +188,7 @@ export function useResponsiveKanban(
     columnWidth,
     containerStyle,
     isCompact,
+    totalBoardWidth,
+    isInitialized,
   };
 }

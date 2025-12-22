@@ -46,28 +46,25 @@ test.describe('Context View - File Management', () => {
 
     await navigateToContext(page);
 
-    // Click Add File button
-    await clickElement(page, 'add-context-file');
-    await page.waitForSelector('[data-testid="add-context-dialog"]', {
+    // Click Create Markdown button
+    await clickElement(page, 'create-markdown-button');
+    await page.waitForSelector('[data-testid="create-markdown-dialog"]', {
       timeout: 5000,
     });
 
-    // Select text type (should be default)
-    await clickElement(page, 'add-text-type');
-
     // Enter filename
-    await fillInput(page, 'new-file-name', 'test-context.md');
+    await fillInput(page, 'new-markdown-name', 'test-context.md');
 
     // Enter content
     const testContent = '# Test Context\n\nThis is test content';
-    await fillInput(page, 'new-file-content', testContent);
+    await fillInput(page, 'new-markdown-content', testContent);
 
     // Click confirm
-    await clickElement(page, 'confirm-add-file');
+    await clickElement(page, 'confirm-create-markdown');
 
     // Wait for dialog to close
     await page.waitForFunction(
-      () => !document.querySelector('[data-testid="add-context-dialog"]'),
+      () => !document.querySelector('[data-testid="create-markdown-dialog"]'),
       { timeout: 5000 }
     );
 
@@ -208,36 +205,16 @@ test.describe('Context View - File Management', () => {
 
     await navigateToContext(page);
 
-    // Click Add File button
-    await clickElement(page, 'add-context-file');
-    await page.waitForSelector('[data-testid="add-context-dialog"]', {
-      timeout: 5000,
-    });
+    // Use the hidden file input to upload an image directly
+    // The "Import File" button triggers this input
+    const fileInput = page.locator('[data-testid="file-import-input"]');
+    await fileInput.setInputFiles(TEST_IMAGE_SRC);
 
-    // Select image type
-    await clickElement(page, 'add-image-type');
-
-    // Enter filename
-    await fillInput(page, 'new-file-name', 'test-image.png');
-
-    // Upload image using file input
-    await page.setInputFiles('[data-testid="image-upload-input"]', TEST_IMAGE_SRC);
-
-    // Wait for image preview to appear (indicates upload success)
-    const addDialog = await getByTestId(page, 'add-context-dialog');
-    await addDialog.locator('img').waitFor({ state: 'visible' });
-
-    // Click confirm
-    await clickElement(page, 'confirm-add-file');
-
-    // Wait for dialog to close
-    await page.waitForFunction(
-      () => !document.querySelector('[data-testid="add-context-dialog"]'),
-      { timeout: 5000 }
-    );
+    // Wait for file to appear in the list (filename is extracted from path)
+    await waitForContextFile(page, 'logo.png', 10000);
 
     // Verify file appears in list
-    const fileButton = await getByTestId(page, 'context-file-test-image.png');
+    const fileButton = await getByTestId(page, 'context-file-logo.png');
     await expect(fileButton).toBeVisible();
 
     // Click on the image to view it
@@ -362,26 +339,23 @@ test.describe('Context View - Drag and Drop', () => {
 
     await navigateToContext(page);
 
-    // Open add file dialog
-    await clickElement(page, 'add-context-file');
-    await page.waitForSelector('[data-testid="add-context-dialog"]', {
+    // Open create markdown dialog
+    await clickElement(page, 'create-markdown-button');
+    await page.waitForSelector('[data-testid="create-markdown-dialog"]', {
       timeout: 5000,
     });
-
-    // Ensure text type is selected
-    await clickElement(page, 'add-text-type');
 
     // Simulate drag and drop of a .md file onto the textarea
     const droppedContent = '# Dropped Content\n\nThis was dragged and dropped.';
     await simulateFileDrop(
       page,
-      '[data-testid="new-file-content"]',
+      '[data-testid="new-markdown-content"]',
       'dropped-file.md',
       droppedContent
     );
 
     // Wait for content to be populated in textarea
-    const textarea = await getByTestId(page, 'new-file-content');
+    const textarea = await getByTestId(page, 'new-markdown-content');
     await textarea.waitFor({ state: 'visible' });
     await expect(textarea).toHaveValue(droppedContent);
 
@@ -390,15 +364,15 @@ test.describe('Context View - Drag and Drop', () => {
     expect(textareaContent).toBe(droppedContent);
 
     // Verify filename is auto-filled
-    const filenameValue = await page.locator('[data-testid="new-file-name"]').inputValue();
+    const filenameValue = await page.locator('[data-testid="new-markdown-name"]').inputValue();
     expect(filenameValue).toBe('dropped-file.md');
 
     // Confirm and create the file
-    await clickElement(page, 'confirm-add-file');
+    await clickElement(page, 'confirm-create-markdown');
 
     // Wait for dialog to close
     await page.waitForFunction(
-      () => !document.querySelector('[data-testid="add-context-dialog"]'),
+      () => !document.querySelector('[data-testid="create-markdown-dialog"]'),
       { timeout: 5000 }
     );
 
@@ -473,20 +447,19 @@ test.describe('Context View - Edge Cases', () => {
     await expect(originalFile).toBeVisible();
 
     // Try to create another file with the same name
-    await clickElement(page, 'add-context-file');
-    await page.waitForSelector('[data-testid="add-context-dialog"]', {
+    await clickElement(page, 'create-markdown-button');
+    await page.waitForSelector('[data-testid="create-markdown-dialog"]', {
       timeout: 5000,
     });
 
-    await clickElement(page, 'add-text-type');
-    await fillInput(page, 'new-file-name', 'test.md');
-    await fillInput(page, 'new-file-content', '# New Content - Overwritten');
+    await fillInput(page, 'new-markdown-name', 'test.md');
+    await fillInput(page, 'new-markdown-content', '# New Content - Overwritten');
 
-    await clickElement(page, 'confirm-add-file');
+    await clickElement(page, 'confirm-create-markdown');
 
     // Wait for dialog to close
     await page.waitForFunction(
-      () => !document.querySelector('[data-testid="add-context-dialog"]'),
+      () => !document.querySelector('[data-testid="create-markdown-dialog"]'),
       { timeout: 5000 }
     );
 
@@ -518,18 +491,17 @@ test.describe('Context View - Edge Cases', () => {
     await navigateToContext(page);
 
     // Test file with parentheses
-    await clickElement(page, 'add-context-file');
-    await page.waitForSelector('[data-testid="add-context-dialog"]', {
+    await clickElement(page, 'create-markdown-button');
+    await page.waitForSelector('[data-testid="create-markdown-dialog"]', {
       timeout: 5000,
     });
 
-    await clickElement(page, 'add-text-type');
-    await fillInput(page, 'new-file-name', 'context (1).md');
-    await fillInput(page, 'new-file-content', 'Content with parentheses in filename');
+    await fillInput(page, 'new-markdown-name', 'context (1).md');
+    await fillInput(page, 'new-markdown-content', 'Content with parentheses in filename');
 
-    await clickElement(page, 'confirm-add-file');
+    await clickElement(page, 'confirm-create-markdown');
     await page.waitForFunction(
-      () => !document.querySelector('[data-testid="add-context-dialog"]'),
+      () => !document.querySelector('[data-testid="create-markdown-dialog"]'),
       { timeout: 5000 }
     );
 
@@ -538,18 +510,17 @@ test.describe('Context View - Edge Cases', () => {
     await expect(fileWithParens).toBeVisible();
 
     // Test file with hyphens and underscores
-    await clickElement(page, 'add-context-file');
-    await page.waitForSelector('[data-testid="add-context-dialog"]', {
+    await clickElement(page, 'create-markdown-button');
+    await page.waitForSelector('[data-testid="create-markdown-dialog"]', {
       timeout: 5000,
     });
 
-    await clickElement(page, 'add-text-type');
-    await fillInput(page, 'new-file-name', 'test-file_v2.md');
-    await fillInput(page, 'new-file-content', 'Content with hyphens and underscores');
+    await fillInput(page, 'new-markdown-name', 'test-file_v2.md');
+    await fillInput(page, 'new-markdown-content', 'Content with hyphens and underscores');
 
-    await clickElement(page, 'confirm-add-file');
+    await clickElement(page, 'confirm-create-markdown');
     await page.waitForFunction(
-      () => !document.querySelector('[data-testid="add-context-dialog"]'),
+      () => !document.querySelector('[data-testid="create-markdown-dialog"]'),
       { timeout: 5000 }
     );
 
@@ -582,18 +553,17 @@ test.describe('Context View - Edge Cases', () => {
     await navigateToContext(page);
 
     // Create file with empty content
-    await clickElement(page, 'add-context-file');
-    await page.waitForSelector('[data-testid="add-context-dialog"]', {
+    await clickElement(page, 'create-markdown-button');
+    await page.waitForSelector('[data-testid="create-markdown-dialog"]', {
       timeout: 5000,
     });
 
-    await clickElement(page, 'add-text-type');
-    await fillInput(page, 'new-file-name', 'empty-file.md');
+    await fillInput(page, 'new-markdown-name', 'empty-file.md');
     // Don't fill any content - leave it empty
 
-    await clickElement(page, 'confirm-add-file');
+    await clickElement(page, 'confirm-create-markdown');
     await page.waitForFunction(
-      () => !document.querySelector('[data-testid="add-context-dialog"]'),
+      () => !document.querySelector('[data-testid="create-markdown-dialog"]'),
       { timeout: 5000 }
     );
 

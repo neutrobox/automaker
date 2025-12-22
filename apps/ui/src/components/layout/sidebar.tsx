@@ -121,7 +121,7 @@ export function Sidebar() {
   const isCreatingSpec = specCreatingForProject !== null;
   const creatingSpecProjectPath = specCreatingForProject;
 
-  // Auto-collapse sidebar on small screens
+  // Auto-collapse sidebar on small screens and update Electron window minWidth
   useSidebarAutoCollapse({ sidebarOpen, toggleSidebar });
 
   // Running agents count

@@ -38,7 +38,9 @@ export const KanbanColumn = memo(function KanbanColumn({
     <div
       ref={setNodeRef}
       className={cn(
-        'relative flex flex-col h-full rounded-xl transition-all duration-200',
+        'relative flex flex-col h-full rounded-xl',
+        // Only transition ring/shadow for drag-over effect, not width
+        'transition-[box-shadow,ring] duration-200',
         !width && 'w-72', // Only apply w-72 if no custom width
         showBorder && 'border border-border/60',
         isOver && 'ring-2 ring-primary/30 ring-offset-1 ring-offset-background'

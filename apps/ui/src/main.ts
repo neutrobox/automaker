@@ -9,7 +9,7 @@ import path from 'path';
 import { spawn, ChildProcess } from 'child_process';
 import fs from 'fs';
 import http, { Server } from 'http';
-import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog, shell, screen } from 'electron';
 
 // Development environment
 const isDev = !app.isPackaged;
@@ -30,6 +30,39 @@ let serverProcess: ChildProcess | null = null;
 let staticServer: Server | null = null;
 const SERVER_PORT = 3008;
 const STATIC_PORT = 3007;
+
+// ============================================
+// Window sizing constants for kanban layout
+// ============================================
+// Calculation: 4 columns × 280px + 3 gaps × 20px + 40px padding = 1220px board content
+// With sidebar expanded (288px): 1220 + 288 = 1508px
+// With sidebar collapsed (64px): 1220 + 64 = 1284px
+const COLUMN_MIN_WIDTH = 280;
+const COLUMN_COUNT = 4;
+const GAP_SIZE = 20;
+const BOARD_PADDING = 40; // px-5 on both sides = 40px (matches gap between columns)
+const SIDEBAR_EXPANDED = 288;
+const SIDEBAR_COLLAPSED = 64;
+
+const BOARD_CONTENT_MIN =
+  COLUMN_MIN_WIDTH * COLUMN_COUNT + GAP_SIZE * (COLUMN_COUNT - 1) + BOARD_PADDING;
+const MIN_WIDTH_EXPANDED = BOARD_CONTENT_MIN + SIDEBAR_EXPANDED; // 1500px
+const MIN_WIDTH_COLLAPSED = BOARD_CONTENT_MIN + SIDEBAR_COLLAPSED; // 1276px
+const MIN_HEIGHT = 650; // Ensures sidebar content fits without scrolling
+const DEFAULT_WIDTH = 1600;
+const DEFAULT_HEIGHT = 950;
+
+// Window bounds interface (matches @automaker/types WindowBounds)
+interface WindowBounds {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  isMaximized: boolean;
+}
+
+// Debounce timer for saving window bounds
+let saveWindowBoundsTimeout: ReturnType<typeof setTimeout> | null = null;
 
 /**
  * Get icon path - works in both dev and production, cross-platform
@@ -54,6 +87,120 @@ function getIconPath(): string | null {
   }
 
   return iconPath;
+}
+
+/**
+ * Get path to window bounds settings file
+ */
+function getWindowBoundsPath(): string {
+  return path.join(app.getPath('userData'), 'window-bounds.json');
+}
+
+/**
+ * Load saved window bounds from disk
+ */
+function loadWindowBounds(): WindowBounds | null {
+  try {
+    const boundsPath = getWindowBoundsPath();
+    if (fs.existsSync(boundsPath)) {
+      const data = fs.readFileSync(boundsPath, 'utf-8');
+      const bounds = JSON.parse(data) as WindowBounds;
+      // Validate the loaded data has required fields
+      if (
+        typeof bounds.x === 'number' &&
+        typeof bounds.y === 'number' &&
+        typeof bounds.width === 'number' &&
+        typeof bounds.height === 'number'
+      ) {
+        return bounds;
+      }
+    }
+  } catch (error) {
+    console.warn('[Electron] Failed to load window bounds:', (error as Error).message);
+  }
+  return null;
+}
+
+/**
+ * Save window bounds to disk
+ */
+function saveWindowBounds(bounds: WindowBounds): void {
+  try {
+    const boundsPath = getWindowBoundsPath();
+    fs.writeFileSync(boundsPath, JSON.stringify(bounds, null, 2), 'utf-8');
+    console.log('[Electron] Window bounds saved');
+  } catch (error) {
+    console.warn('[Electron] Failed to save window bounds:', (error as Error).message);
+  }
+}
+
+/**
+ * Schedule a debounced save of window bounds (500ms delay)
+ */
+function scheduleSaveWindowBounds(): void {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+
+  if (saveWindowBoundsTimeout) {
+    clearTimeout(saveWindowBoundsTimeout);
+  }
+
+  saveWindowBoundsTimeout = setTimeout(() => {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+
+    const isMaximized = mainWindow.isMaximized();
+    // Use getNormalBounds() for maximized windows to save pre-maximized size
+    const bounds = isMaximized ? mainWindow.getNormalBounds() : mainWindow.getBounds();
+
+    saveWindowBounds({
+      x: bounds.x,
+      y: bounds.y,
+      width: bounds.width,
+      height: bounds.height,
+      isMaximized,
+    });
+  }, 500);
+}
+
+/**
+ * Validate that window bounds are visible on at least one display
+ * Returns adjusted bounds if needed, or null if completely off-screen
+ */
+function validateBounds(bounds: WindowBounds): WindowBounds {
+  const displays = screen.getAllDisplays();
+
+  // Check if window center is visible on any display
+  const centerX = bounds.x + bounds.width / 2;
+  const centerY = bounds.y + bounds.height / 2;
+
+  let isVisible = false;
+  for (const display of displays) {
+    const { x, y, width, height } = display.workArea;
+    if (centerX >= x && centerX <= x + width && centerY >= y && centerY <= y + height) {
+      isVisible = true;
+      break;
+    }
+  }
+
+  if (!isVisible) {
+    // Window is off-screen, reset to primary display
+    const primaryDisplay = screen.getPrimaryDisplay();
+    const { x, y, width, height } = primaryDisplay.workArea;
+
+    return {
+      x: x + Math.floor((width - bounds.width) / 2),
+      y: y + Math.floor((height - bounds.height) / 2),
+      width: Math.min(bounds.width, width),
+      height: Math.min(bounds.height, height),
+      isMaximized: bounds.isMaximized,
+    };
+  }
+
+  // Ensure minimum dimensions
+  return {
+    ...bounds,
+    width: Math.max(bounds.width, MIN_WIDTH_EXPANDED),
+    height: Math.max(bounds.height, MIN_HEIGHT),
+  };
 }
 
 /**
@@ -246,11 +393,18 @@ async function waitForServer(maxAttempts = 30): Promise<void> {
  */
 function createWindow(): void {
   const iconPath = getIconPath();
+
+  // Load and validate saved window bounds
+  const savedBounds = loadWindowBounds();
+  const validBounds = savedBounds ? validateBounds(savedBounds) : null;
+
   const windowOptions: Electron.BrowserWindowConstructorOptions = {
-    width: 1600,
-    height: 950,
-    minWidth: 1280,
-    minHeight: 768,
+    width: validBounds?.width ?? DEFAULT_WIDTH,
+    height: validBounds?.height ?? DEFAULT_HEIGHT,
+    x: validBounds?.x,
+    y: validBounds?.y,
+    minWidth: MIN_WIDTH_EXPANDED, // 1500px - ensures kanban columns fit with sidebar
+    minHeight: MIN_HEIGHT,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -266,6 +420,11 @@ function createWindow(): void {
 
   mainWindow = new BrowserWindow(windowOptions);
 
+  // Restore maximized state if previously maximized
+  if (validBounds?.isMaximized) {
+    mainWindow.maximize();
+  }
+
   // Load Vite dev server in development or static server in production
   if (VITE_DEV_SERVER_URL) {
     mainWindow.loadURL(VITE_DEV_SERVER_URL);
@@ -280,8 +439,33 @@ function createWindow(): void {
     mainWindow.webContents.openDevTools();
   }
 
+  // Save window bounds on close, resize, and move
+  mainWindow.on('close', () => {
+    // Save immediately before closing (not debounced)
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      const isMaximized = mainWindow.isMaximized();
+      const bounds = isMaximized ? mainWindow.getNormalBounds() : mainWindow.getBounds();
+
+      saveWindowBounds({
+        x: bounds.x,
+        y: bounds.y,
+        width: bounds.width,
+        height: bounds.height,
+        isMaximized,
+      });
+    }
+  });
+
   mainWindow.on('closed', () => {
     mainWindow = null;
+  });
+
+  mainWindow.on('resized', () => {
+    scheduleSaveWindowBounds();
+  });
+
+  mainWindow.on('moved', () => {
+    scheduleSaveWindowBounds();
   });
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
@@ -459,4 +643,18 @@ ipcMain.handle('ping', async () => {
 // Get server URL for HTTP client
 ipcMain.handle('server:getUrl', async () => {
   return `http://localhost:${SERVER_PORT}`;
+});
+
+// Window management - update minimum width based on sidebar state
+ipcMain.handle('window:updateMinWidth', (_, sidebarExpanded: boolean) => {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+
+  const minWidth = sidebarExpanded ? MIN_WIDTH_EXPANDED : MIN_WIDTH_COLLAPSED;
+  mainWindow.setMinimumSize(minWidth, MIN_HEIGHT);
+
+  // If current width is below new minimum, resize window
+  const currentBounds = mainWindow.getBounds();
+  if (currentBounds.width < minWidth) {
+    mainWindow.setSize(minWidth, currentBounds.height);
+  }
 });
