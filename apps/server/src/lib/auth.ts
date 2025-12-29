@@ -127,8 +127,9 @@ function ensureApiKey(): string {
 // API key - always generated/loaded on startup for CSRF protection
 const API_KEY = ensureApiKey();
 
-// Print API key to console for web mode users
-console.log(`
+// Print API key to console for web mode users (unless suppressed for production logging)
+if (process.env.AUTOMAKER_HIDE_API_KEY !== 'true') {
+  console.log(`
 ╔═══════════════════════════════════════════════════════════════════════╗
 ║  🔐 API Key for Web Mode Authentication                               ║
 ╠═══════════════════════════════════════════════════════════════════════╣
@@ -140,6 +141,9 @@ console.log(`
 ║  In Electron mode, authentication is handled automatically.          ║
 ╚═══════════════════════════════════════════════════════════════════════╝
 `);
+} else {
+  console.log('[Auth] API key banner hidden (AUTOMAKER_HIDE_API_KEY=true)');
+}
 
 /**
  * Generate a cryptographically secure session token
@@ -205,13 +209,17 @@ export function createWsConnectionToken(): string {
 /**
  * Validate a WebSocket connection token
  * These tokens are single-use and short-lived (5 minutes)
+ * Token is invalidated immediately after first successful use
  */
 export function validateWsConnectionToken(token: string): boolean {
   const tokenData = wsConnectionTokens.get(token);
   if (!tokenData) return false;
 
+  // Always delete the token (single-use)
+  wsConnectionTokens.delete(token);
+
+  // Check if expired
   if (Date.now() > tokenData.expiresAt) {
-    wsConnectionTokens.delete(token);
     return false;
   }
 
@@ -219,10 +227,23 @@ export function validateWsConnectionToken(token: string): boolean {
 }
 
 /**
- * Validate the API key
+ * Validate the API key using timing-safe comparison
+ * Prevents timing attacks that could leak information about the key
  */
 export function validateApiKey(key: string): boolean {
-  return key === API_KEY;
+  if (!key || typeof key !== 'string') return false;
+
+  // Both buffers must be the same length for timingSafeEqual
+  const keyBuffer = Buffer.from(key);
+  const apiKeyBuffer = Buffer.from(API_KEY);
+
+  // If lengths differ, compare against a dummy to maintain constant time
+  if (keyBuffer.length !== apiKeyBuffer.length) {
+    crypto.timingSafeEqual(apiKeyBuffer, apiKeyBuffer);
+    return false;
+  }
+
+  return crypto.timingSafeEqual(keyBuffer, apiKeyBuffer);
 }
 
 /**
@@ -270,7 +291,7 @@ function checkAuthentication(
   // Check for API key in header (Electron mode)
   const headerKey = headers['x-api-key'] as string | undefined;
   if (headerKey) {
-    if (headerKey === API_KEY) {
+    if (validateApiKey(headerKey)) {
       return { authenticated: true };
     }
     return { authenticated: false, errorType: 'invalid_api_key' };
@@ -288,7 +309,7 @@ function checkAuthentication(
   // Check for API key in query parameter (fallback)
   const queryKey = query.apiKey;
   if (queryKey) {
-    if (queryKey === API_KEY) {
+    if (validateApiKey(queryKey)) {
       return { authenticated: true };
     }
     return { authenticated: false, errorType: 'invalid_api_key' };

@@ -230,6 +230,44 @@ export class HttpApiClient implements ElectronAPI {
     this.connectWebSocket();
   }
 
+  /**
+   * Fetch a short-lived WebSocket token from the server
+   * Used for secure WebSocket authentication without exposing session tokens in URLs
+   */
+  private async fetchWsToken(): Promise<string | null> {
+    try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+
+      // Add session token header if available
+      const sessionToken = getSessionToken();
+      if (sessionToken) {
+        headers['X-Session-Token'] = sessionToken;
+      }
+
+      const response = await fetch(`${this.serverUrl}/api/auth/token`, {
+        headers,
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        console.warn('[HttpApiClient] Failed to fetch wsToken:', response.status);
+        return null;
+      }
+
+      const data = await response.json();
+      if (data.success && data.token) {
+        return data.token;
+      }
+
+      return null;
+    } catch (error) {
+      console.error('[HttpApiClient] Error fetching wsToken:', error);
+      return null;
+    }
+  }
+
   private connectWebSocket(): void {
     if (this.isConnecting || (this.ws && this.ws.readyState === WebSocket.OPEN)) {
       return;
@@ -237,23 +275,37 @@ export class HttpApiClient implements ElectronAPI {
 
     this.isConnecting = true;
 
-    try {
-      let wsUrl = this.serverUrl.replace(/^http/, 'ws') + '/api/events';
+    // In Electron mode, use API key directly
+    const apiKey = getApiKey();
+    if (apiKey) {
+      const wsUrl = this.serverUrl.replace(/^http/, 'ws') + '/api/events';
+      this.establishWebSocket(`${wsUrl}?apiKey=${encodeURIComponent(apiKey)}`);
+      return;
+    }
 
-      // In Electron mode, add API key as query param for WebSocket auth
-      // (WebSocket doesn't support custom headers in browser)
-      const apiKey = getApiKey();
-      if (apiKey) {
-        wsUrl += `?apiKey=${encodeURIComponent(apiKey)}`;
-      } else {
-        // In web mode, add session token as query param
-        // (cookies may not work cross-origin, so use explicit token)
-        const sessionToken = getSessionToken();
-        if (sessionToken) {
-          wsUrl += `?sessionToken=${encodeURIComponent(sessionToken)}`;
+    // In web mode, fetch a short-lived wsToken first
+    this.fetchWsToken()
+      .then((wsToken) => {
+        const wsUrl = this.serverUrl.replace(/^http/, 'ws') + '/api/events';
+        if (wsToken) {
+          this.establishWebSocket(`${wsUrl}?wsToken=${encodeURIComponent(wsToken)}`);
+        } else {
+          // Fallback: try connecting without token (will fail if not authenticated)
+          console.warn('[HttpApiClient] No wsToken available, attempting connection anyway');
+          this.establishWebSocket(wsUrl);
         }
-      }
+      })
+      .catch((error) => {
+        console.error('[HttpApiClient] Failed to prepare WebSocket connection:', error);
+        this.isConnecting = false;
+      });
+  }
 
+  /**
+   * Establish the actual WebSocket connection
+   */
+  private establishWebSocket(wsUrl: string): void {
+    try {
       this.ws = new WebSocket(wsUrl);
 
       this.ws.onopen = () => {

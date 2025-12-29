@@ -13,6 +13,7 @@
  */
 
 import { Router } from 'express';
+import type { Request } from 'express';
 import {
   validateApiKey,
   createSession,
@@ -22,6 +23,83 @@ import {
   isRequestAuthenticated,
   createWsConnectionToken,
 } from '../../lib/auth.js';
+
+// Rate limiting configuration
+const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute window
+const RATE_LIMIT_MAX_ATTEMPTS = 5; // Max 5 attempts per window
+
+// In-memory rate limit tracking (resets on server restart)
+const loginAttempts = new Map<string, { count: number; windowStart: number }>();
+
+// Clean up old rate limit entries periodically (every 5 minutes)
+setInterval(
+  () => {
+    const now = Date.now();
+    loginAttempts.forEach((data, ip) => {
+      if (now - data.windowStart > RATE_LIMIT_WINDOW_MS * 2) {
+        loginAttempts.delete(ip);
+      }
+    });
+  },
+  5 * 60 * 1000
+);
+
+/**
+ * Get client IP address from request
+ * Handles X-Forwarded-For header for reverse proxy setups
+ */
+function getClientIp(req: Request): string {
+  const forwarded = req.headers['x-forwarded-for'];
+  if (forwarded) {
+    // X-Forwarded-For can be a comma-separated list; take the first (original client)
+    const forwardedIp = Array.isArray(forwarded) ? forwarded[0] : forwarded.split(',')[0];
+    return forwardedIp.trim();
+  }
+  return req.ip || req.socket.remoteAddress || 'unknown';
+}
+
+/**
+ * Check if an IP is rate limited
+ * Returns { limited: boolean, retryAfter?: number }
+ */
+function checkRateLimit(ip: string): { limited: boolean; retryAfter?: number } {
+  const now = Date.now();
+  const attempt = loginAttempts.get(ip);
+
+  if (!attempt) {
+    return { limited: false };
+  }
+
+  // Check if window has expired
+  if (now - attempt.windowStart > RATE_LIMIT_WINDOW_MS) {
+    loginAttempts.delete(ip);
+    return { limited: false };
+  }
+
+  // Check if over limit
+  if (attempt.count >= RATE_LIMIT_MAX_ATTEMPTS) {
+    const retryAfter = Math.ceil((RATE_LIMIT_WINDOW_MS - (now - attempt.windowStart)) / 1000);
+    return { limited: true, retryAfter };
+  }
+
+  return { limited: false };
+}
+
+/**
+ * Record a login attempt for rate limiting
+ */
+function recordLoginAttempt(ip: string): void {
+  const now = Date.now();
+  const attempt = loginAttempts.get(ip);
+
+  if (!attempt || now - attempt.windowStart > RATE_LIMIT_WINDOW_MS) {
+    // Start new window
+    loginAttempts.set(ip, { count: 1, windowStart: now });
+  } else {
+    // Increment existing window
+    attempt.count++;
+  }
+}
 
 /**
  * Create auth routes
@@ -51,8 +129,23 @@ export function createAuthRoutes(): Router {
    *
    * Validates the API key and sets a session cookie.
    * Body: { apiKey: string }
+   *
+   * Rate limited to 5 attempts per minute per IP to prevent brute force attacks.
    */
   router.post('/login', async (req, res) => {
+    const clientIp = getClientIp(req);
+
+    // Check rate limit before processing
+    const rateLimit = checkRateLimit(clientIp);
+    if (rateLimit.limited) {
+      res.status(429).json({
+        success: false,
+        error: 'Too many login attempts. Please try again later.',
+        retryAfter: rateLimit.retryAfter,
+      });
+      return;
+    }
+
     const { apiKey } = req.body as { apiKey?: string };
 
     if (!apiKey) {
@@ -62,6 +155,9 @@ export function createAuthRoutes(): Router {
       });
       return;
     }
+
+    // Record this attempt (only for actual API key validation attempts)
+    recordLoginAttempt(clientIp);
 
     if (!validateApiKey(apiKey)) {
       res.status(401).json({
