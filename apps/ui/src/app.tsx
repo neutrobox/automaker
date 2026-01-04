@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { RouterProvider } from '@tanstack/react-router';
 import { router } from './utils/router';
 import { SplashScreen } from './components/splash-screen';
@@ -14,6 +14,17 @@ export default function App() {
     }
     return true;
   });
+
+  // Clear accumulated PerformanceMeasure entries to prevent memory leak in dev mode
+  // React's internal scheduler creates performance marks/measures that accumulate without cleanup
+  useEffect(() => {
+    const clearPerfEntries = () => {
+      performance.clearMarks();
+      performance.clearMeasures();
+    };
+    const interval = setInterval(clearPerfEntries, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Run settings migration on startup (localStorage -> file storage)
   const migrationState = useSettingsMigration();
