@@ -87,16 +87,26 @@ export async function* spawnJSONLProcess(options: SubprocessOptions): AsyncGener
 
   resetTimeout();
 
-  // Setup abort handling
+  // Setup abort handling with cleanup
+  let abortHandler: (() => void) | null = null;
   if (abortController) {
-    abortController.signal.addEventListener('abort', () => {
+    abortHandler = () => {
       console.log('[SubprocessManager] Abort signal received, killing process');
       if (timeoutHandle) {
         clearTimeout(timeoutHandle);
       }
       childProcess.kill('SIGTERM');
-    });
+    };
+    abortController.signal.addEventListener('abort', abortHandler);
   }
+
+  // Helper to clean up abort listener
+  const cleanupAbortListener = () => {
+    if (abortController && abortHandler) {
+      abortController.signal.removeEventListener('abort', abortHandler);
+      abortHandler = null;
+    }
+  };
 
   // Parse stdout as JSONL (one JSON object per line)
   if (childProcess.stdout) {
@@ -130,7 +140,12 @@ export async function* spawnJSONLProcess(options: SubprocessOptions): AsyncGener
       if (timeoutHandle) {
         clearTimeout(timeoutHandle);
       }
+      rl.close();
+      cleanupAbortListener();
     }
+  } else {
+    // No stdout - still need to cleanup abort listener when process exits
+    cleanupAbortListener();
   }
 
   // Wait for process to exit
@@ -195,19 +210,31 @@ export async function spawnProcess(options: SubprocessOptions): Promise<Subproce
       });
     }
 
-    // Setup abort handling
+    // Setup abort handling with cleanup
+    let abortHandler: (() => void) | null = null;
+    const cleanupAbortListener = () => {
+      if (abortController && abortHandler) {
+        abortController.signal.removeEventListener('abort', abortHandler);
+        abortHandler = null;
+      }
+    };
+
     if (abortController) {
-      abortController.signal.addEventListener('abort', () => {
+      abortHandler = () => {
+        cleanupAbortListener();
         childProcess.kill('SIGTERM');
         reject(new Error('Process aborted'));
-      });
+      };
+      abortController.signal.addEventListener('abort', abortHandler);
     }
 
     childProcess.on('exit', (code) => {
+      cleanupAbortListener();
       resolve({ stdout, stderr, exitCode: code });
     });
 
     childProcess.on('error', (error) => {
+      cleanupAbortListener();
       reject(error);
     });
   });
