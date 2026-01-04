@@ -21,6 +21,7 @@ export type GenerationJobStatus = 'generating' | 'ready' | 'error';
 
 export interface GenerationJob {
   id: string;
+  projectPath: string;
   prompt: IdeationPrompt;
   status: GenerationJobStatus;
   suggestions: AnalysisSuggestion[];
@@ -76,7 +77,8 @@ interface IdeationActions {
   getSelectedIdea: () => Idea | null;
 
   // Generation Jobs
-  addGenerationJob: (prompt: IdeationPrompt) => string;
+  addGenerationJob: (projectPath: string, prompt: IdeationPrompt) => string;
+  getJobsForProject: (projectPath: string) => GenerationJob[];
   updateJobStatus: (
     jobId: string,
     status: GenerationJobStatus,
@@ -172,10 +174,11 @@ export const useIdeationStore = create<IdeationState & IdeationActions>()(
       },
 
       // Generation Jobs
-      addGenerationJob: (prompt) => {
+      addGenerationJob: (projectPath, prompt) => {
         const jobId = `job-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         const job: GenerationJob = {
           id: jobId,
+          projectPath,
           prompt,
           status: 'generating',
           suggestions: [],
@@ -187,6 +190,11 @@ export const useIdeationStore = create<IdeationState & IdeationActions>()(
           generationJobs: [job, ...state.generationJobs],
         }));
         return jobId;
+      },
+
+      getJobsForProject: (projectPath) => {
+        const state = get();
+        return state.generationJobs.filter((job) => job.projectPath === projectPath);
       },
 
       updateJobStatus: (jobId, status, suggestions, error) =>

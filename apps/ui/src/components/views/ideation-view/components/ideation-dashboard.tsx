@@ -168,15 +168,16 @@ function TagFilter({
 
 export function IdeationDashboard({ onGenerateIdeas }: IdeationDashboardProps) {
   const currentProject = useAppStore((s) => s.currentProject);
-  const { generationJobs, removeSuggestionFromJob } = useIdeationStore();
+  const { getJobsForProject, removeSuggestionFromJob } = useIdeationStore();
   const [addingId, setAddingId] = useState<string | null>(null);
   const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
 
+  // Get jobs for current project only
+  const projectJobs = currentProject?.path ? getJobsForProject(currentProject.path) : [];
+
   // Separate generating/error jobs from ready jobs with suggestions
-  const activeJobs = generationJobs.filter(
-    (j) => j.status === 'generating' || j.status === 'error'
-  );
-  const readyJobs = generationJobs.filter((j) => j.status === 'ready' && j.suggestions.length > 0);
+  const activeJobs = projectJobs.filter((j) => j.status === 'generating' || j.status === 'error');
+  const readyJobs = projectJobs.filter((j) => j.status === 'ready' && j.suggestions.length > 0);
 
   // Flatten all suggestions with their parent job
   const allSuggestions = useMemo(
@@ -203,7 +204,7 @@ export function IdeationDashboard({ onGenerateIdeas }: IdeationDashboardProps) {
     return allSuggestions.filter(({ job }) => selectedTags.has(job.prompt.title));
   }, [allSuggestions, selectedTags]);
 
-  const generatingCount = generationJobs.filter((j) => j.status === 'generating').length;
+  const generatingCount = projectJobs.filter((j) => j.status === 'generating').length;
 
   const handleToggleTag = (tag: string) => {
     setSelectedTags((prev) => {
@@ -314,6 +315,16 @@ export function IdeationDashboard({ onGenerateIdeas }: IdeationDashboardProps) {
               </div>
             </CardContent>
           </Card>
+        )}
+
+        {/* Generate More Ideas Button - shown when there are items */}
+        {!isEmpty && (
+          <div className="pt-2">
+            <Button onClick={onGenerateIdeas} variant="outline" className="w-full gap-2">
+              <Lightbulb className="w-4 h-4" />
+              Generate More Ideas
+            </Button>
+          </div>
         )}
 
         {/* Empty State */}

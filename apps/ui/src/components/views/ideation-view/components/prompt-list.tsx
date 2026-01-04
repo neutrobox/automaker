@@ -20,7 +20,7 @@ interface PromptListProps {
 
 export function PromptList({ category, onBack }: PromptListProps) {
   const currentProject = useAppStore((s) => s.currentProject);
-  const { setMode, addGenerationJob, updateJobStatus, generationJobs } = useIdeationStore();
+  const { setMode, addGenerationJob, updateJobStatus, getJobsForProject } = useIdeationStore();
   const [loadingPromptId, setLoadingPromptId] = useState<string | null>(null);
   const [startedPrompts, setStartedPrompts] = useState<Set<string>>(new Set());
   const navigate = useNavigate();
@@ -32,9 +32,10 @@ export function PromptList({ category, onBack }: PromptListProps) {
 
   const prompts = getPromptsByCategory(category);
 
-  // Check which prompts are already generating
+  // Get jobs for current project only and check which prompts are already generating
+  const projectJobs = currentProject?.path ? getJobsForProject(currentProject.path) : [];
   const generatingPromptIds = new Set(
-    generationJobs.filter((j) => j.status === 'generating').map((j) => j.prompt.id)
+    projectJobs.filter((j) => j.status === 'generating').map((j) => j.prompt.id)
   );
 
   const handleSelectPrompt = async (prompt: IdeationPrompt) => {
@@ -48,7 +49,7 @@ export function PromptList({ category, onBack }: PromptListProps) {
     setLoadingPromptId(prompt.id);
 
     // Add a job and navigate to dashboard
-    const jobId = addGenerationJob(prompt);
+    const jobId = addGenerationJob(currentProject.path, prompt);
     setStartedPrompts((prev) => new Set(prev).add(prompt.id));
 
     // Show toast and navigate to dashboard
