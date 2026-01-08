@@ -97,6 +97,8 @@ export class ClaudeProvider extends BaseProvider {
       ...(options.mcpServers && { mcpServers: options.mcpServers }),
       // Extended thinking configuration
       ...(maxThinkingTokens && { maxThinkingTokens }),
+      // Subagents configuration for specialized task delegation
+      ...(options.agents && { agents: options.agents }),
     };
 
     // Build prompt payload

@@ -725,6 +725,83 @@ export interface ElectronAPI {
     }>;
   };
   ideation?: IdeationAPI;
+  settings?: {
+    getStatus: () => Promise<{
+      success: boolean;
+      hasGlobalSettings: boolean;
+      hasCredentials: boolean;
+      dataDir: string;
+      needsMigration: boolean;
+    }>;
+    getGlobal: () => Promise<{
+      success: boolean;
+      settings?: Record<string, unknown>;
+      error?: string;
+    }>;
+    updateGlobal: (updates: Record<string, unknown>) => Promise<{
+      success: boolean;
+      settings?: Record<string, unknown>;
+      error?: string;
+    }>;
+    getCredentials: () => Promise<{
+      success: boolean;
+      credentials?: {
+        anthropic: { configured: boolean; masked: string };
+        google: { configured: boolean; masked: string };
+        openai: { configured: boolean; masked: string };
+      };
+      error?: string;
+    }>;
+    updateCredentials: (updates: {
+      apiKeys?: { anthropic?: string; google?: string; openai?: string };
+    }) => Promise<{
+      success: boolean;
+      credentials?: {
+        anthropic: { configured: boolean; masked: string };
+        google: { configured: boolean; masked: string };
+        openai: { configured: boolean; masked: string };
+      };
+      error?: string;
+    }>;
+    getProject: (projectPath: string) => Promise<{
+      success: boolean;
+      settings?: Record<string, unknown>;
+      error?: string;
+    }>;
+    updateProject: (
+      projectPath: string,
+      updates: Record<string, unknown>
+    ) => Promise<{
+      success: boolean;
+      settings?: Record<string, unknown>;
+      error?: string;
+    }>;
+    migrate: (data: Record<string, string>) => Promise<{
+      success: boolean;
+      migratedGlobalSettings: boolean;
+      migratedCredentials: boolean;
+      migratedProjectCount: number;
+      errors: string[];
+    }>;
+    discoverAgents: (
+      projectPath?: string,
+      sources?: Array<'user' | 'project'>
+    ) => Promise<{
+      success: boolean;
+      agents?: Array<{
+        name: string;
+        definition: {
+          description: string;
+          prompt: string;
+          tools?: string[];
+          model?: 'sonnet' | 'opus' | 'haiku' | 'inherit';
+        };
+        source: 'user' | 'project';
+        filePath: string;
+      }>;
+      error?: string;
+    }>;
+  };
 }
 
 // Note: Window interface is declared in @/types/electron.d.ts

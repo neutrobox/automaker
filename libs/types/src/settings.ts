@@ -543,6 +543,43 @@ export interface GlobalSettings {
   // Prompt Customization
   /** Custom prompts for Auto Mode, Agent Runner, Backlog Planning, and Enhancements */
   promptCustomization?: PromptCustomization;
+
+  // Skills Configuration
+  /**
+   * Enable Skills functionality (loads from .claude/skills/ directories)
+   * @default true
+   */
+  enableSkills?: boolean;
+
+  /**
+   * Which directories to load Skills from
+   * - 'user': ~/.claude/skills/ (personal skills)
+   * - 'project': .claude/skills/ (project-specific skills)
+   * @default ['user', 'project']
+   */
+  skillsSources?: Array<'user' | 'project'>;
+
+  // Subagents Configuration
+  /**
+   * Enable Custom Subagents functionality (loads from .claude/agents/ directories)
+   * @default true
+   */
+  enableSubagents?: boolean;
+
+  /**
+   * Which directories to load Subagents from
+   * - 'user': ~/.claude/agents/ (personal agents)
+   * - 'project': .claude/agents/ (project-specific agents)
+   * @default ['user', 'project']
+   */
+  subagentsSources?: Array<'user' | 'project'>;
+
+  /**
+   * Custom subagent definitions for specialized task delegation (programmatic)
+   * Key: agent name (e.g., 'code-reviewer', 'test-runner')
+   * Value: agent configuration
+   */
+  customSubagents?: Record<string, import('./provider.js').AgentDefinition>;
 }
 
 /**
@@ -642,6 +679,15 @@ export interface ProjectSettings {
   // Claude Agent SDK Settings
   /** Auto-load CLAUDE.md files using SDK's settingSources option (project override) */
   autoLoadClaudeMd?: boolean;
+
+  // Subagents Configuration
+  /**
+   * Project-specific custom subagent definitions for specialized task delegation
+   * Merged with global customSubagents, project-level takes precedence
+   * Key: agent name (e.g., 'code-reviewer', 'test-runner')
+   * Value: agent configuration
+   */
+  customSubagents?: Record<string, import('./provider.js').AgentDefinition>;
 }
 
 /**
@@ -743,6 +789,10 @@ export const DEFAULT_GLOBAL_SETTINGS: GlobalSettings = {
   codexAdditionalDirs: DEFAULT_CODEX_ADDITIONAL_DIRS,
   codexThreadId: undefined,
   mcpServers: [],
+  enableSkills: true,
+  skillsSources: ['user', 'project'],
+  enableSubagents: true,
+  subagentsSources: ['user', 'project'],
 };
 
 /** Default credentials (empty strings - user must provide API keys) */

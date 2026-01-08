@@ -17,6 +17,7 @@ export type {
   McpStdioServerConfig,
   McpSSEServerConfig,
   McpHttpServerConfig,
+  AgentDefinition,
   ReasoningEffort,
 } from './provider.js';
 

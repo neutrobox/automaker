@@ -26,6 +26,9 @@ import {
   filterClaudeMdFromContext,
   getMCPServersFromSettings,
   getPromptCustomization,
+  getSkillsConfiguration,
+  getSubagentsConfiguration,
+  getCustomSubagents,
 } from '../lib/settings-helpers.js';
 
 interface Message {
@@ -255,6 +258,22 @@ export class AgentService {
       // Load MCP servers from settings (global setting only)
       const mcpServers = await getMCPServersFromSettings(this.settingsService, '[AgentService]');
 
+      // Get Skills configuration from settings
+      const skillsConfig = this.settingsService
+        ? await getSkillsConfiguration(this.settingsService)
+        : { enabled: false, sources: [] as Array<'user' | 'project'>, shouldIncludeInTools: false };
+
+      // Get Subagents configuration from settings
+      const subagentsConfig = this.settingsService
+        ? await getSubagentsConfiguration(this.settingsService)
+        : { enabled: false, sources: [] as Array<'user' | 'project'>, shouldIncludeInTools: false };
+
+      // Get custom subagents from settings (merge global + project-level) only if enabled
+      const customSubagents =
+        this.settingsService && subagentsConfig.enabled
+          ? await getCustomSubagents(this.settingsService, effectiveWorkDir)
+          : undefined;
+
       // Load project context files (CLAUDE.md, CODE_QUALITY.md, etc.)
       const contextResult = await loadContextFiles({
         projectPath: effectiveWorkDir,
@@ -289,7 +308,47 @@ export class AgentService {
       // Extract model, maxTurns, and allowedTools from SDK options
       const effectiveModel = sdkOptions.model!;
       const maxTurns = sdkOptions.maxTurns;
-      const allowedTools = sdkOptions.allowedTools as string[] | undefined;
+      let allowedTools = sdkOptions.allowedTools as string[] | undefined;
+
+      // Build merged settingSources array using Set for automatic deduplication
+      const sdkSettingSources = (sdkOptions.settingSources ?? []).filter(
+        (source): source is 'user' | 'project' => source === 'user' || source === 'project'
+      );
+      const skillSettingSources = skillsConfig.enabled ? skillsConfig.sources : [];
+      const settingSources = [...new Set([...sdkSettingSources, ...skillSettingSources])];
+
+      // Enhance allowedTools with Skills and Subagents tools
+      // These tools are not in the provider's default set - they're added dynamically based on settings
+      const needsSkillTool = skillsConfig.shouldIncludeInTools;
+      const needsTaskTool =
+        subagentsConfig.shouldIncludeInTools &&
+        customSubagents &&
+        Object.keys(customSubagents).length > 0;
+
+      // Base tools that match the provider's default set
+      const baseTools = ['Read', 'Write', 'Edit', 'Glob', 'Grep', 'Bash', 'WebSearch', 'WebFetch'];
+
+      if (allowedTools) {
+        allowedTools = [...allowedTools]; // Create a copy to avoid mutating SDK options
+        // Add Skill tool if skills are enabled
+        if (needsSkillTool && !allowedTools.includes('Skill')) {
+          allowedTools.push('Skill');
+        }
+        // Add Task tool if custom subagents are configured
+        if (needsTaskTool && !allowedTools.includes('Task')) {
+          allowedTools.push('Task');
+        }
+      } else if (needsSkillTool || needsTaskTool) {
+        // If no allowedTools specified but we need to add Skill/Task tools,
+        // build the full list including base tools
+        allowedTools = [...baseTools];
+        if (needsSkillTool) {
+          allowedTools.push('Skill');
+        }
+        if (needsTaskTool) {
+          allowedTools.push('Task');
+        }
+      }
 
       // Get provider for this model (with prefix)
       const provider = ProviderFactory.getProviderForModel(effectiveModel);
@@ -308,9 +367,10 @@ export class AgentService {
         allowedTools: allowedTools,
         abortController: session.abortController!,
         conversationHistory: conversationHistory.length > 0 ? conversationHistory : undefined,
-        settingSources: sdkOptions.settingSources,
+        settingSources: settingSources.length > 0 ? settingSources : undefined,
         sdkSessionId: session.sdkSessionId, // Pass SDK session ID for resuming
         mcpServers: Object.keys(mcpServers).length > 0 ? mcpServers : undefined, // Pass MCP servers configuration
+        agents: customSubagents, // Pass custom subagents for task delegation
         thinkingLevel: effectiveThinkingLevel, // Pass thinking level for Claude models
         reasoningEffort: effectiveReasoningEffort, // Pass reasoning effort for Codex models
       };
