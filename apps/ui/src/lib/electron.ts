@@ -1646,6 +1646,8 @@ function createMockWorktreeAPI(): WorktreeAPI {
     },
 
     openInEditor: async (worktreePath: string, editorCommand?: string) => {
+      const ANTIGRAVITY_EDITOR_COMMAND = 'antigravity';
+      const ANTIGRAVITY_LEGACY_COMMAND = 'agy';
       // Map editor commands to display names
       const editorNameMap: Record<string, string> = {
         cursor: 'Cursor',
@@ -1658,7 +1660,8 @@ function createMockWorktreeAPI(): WorktreeAPI {
         webstorm: 'WebStorm',
         xed: 'Xcode',
         studio: 'Android Studio',
-        agy: 'Antigravity',
+        [ANTIGRAVITY_EDITOR_COMMAND]: 'Antigravity',
+        [ANTIGRAVITY_LEGACY_COMMAND]: 'Antigravity',
         open: 'Finder',
         explorer: 'Explorer',
         'xdg-open': 'File Manager',

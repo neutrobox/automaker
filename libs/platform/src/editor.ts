@@ -87,10 +87,14 @@ async function findMacApp(appName: string): Promise<string | null> {
 interface EditorDefinition {
   name: string;
   cliCommand: string;
+  cliAliases?: readonly string[];
   macAppName: string;
   /** If true, only available on macOS */
   macOnly?: boolean;
 }
+
+const ANTIGRAVITY_CLI_COMMANDS = ['antigravity', 'agy'] as const;
+const [PRIMARY_ANTIGRAVITY_COMMAND, ...LEGACY_ANTIGRAVITY_COMMANDS] = ANTIGRAVITY_CLI_COMMANDS;
 
 /**
  * List of supported editors in priority order
@@ -106,7 +110,12 @@ const SUPPORTED_EDITORS: EditorDefinition[] = [
   { name: 'WebStorm', cliCommand: 'webstorm', macAppName: 'WebStorm' },
   { name: 'Xcode', cliCommand: 'xed', macAppName: 'Xcode', macOnly: true },
   { name: 'Android Studio', cliCommand: 'studio', macAppName: 'Android Studio' },
-  { name: 'Antigravity', cliCommand: 'agy', macAppName: 'Antigravity' },
+  {
+    name: 'Antigravity',
+    cliCommand: PRIMARY_ANTIGRAVITY_COMMAND,
+    cliAliases: LEGACY_ANTIGRAVITY_COMMANDS,
+    macAppName: 'Antigravity',
+  },
 ];
 
 /**
@@ -120,8 +129,11 @@ async function findEditor(definition: EditorDefinition): Promise<EditorInfo | nu
   }
 
   // Try CLI command first (works on all platforms)
-  if (await commandExists(definition.cliCommand)) {
-    return { name: definition.name, command: definition.cliCommand };
+  const cliCandidates = [definition.cliCommand, ...(definition.cliAliases ?? [])];
+  for (const cliCommand of cliCandidates) {
+    if (await commandExists(cliCommand)) {
+      return { name: definition.name, command: cliCommand };
+    }
   }
 
   // Try macOS app bundle (checks /Applications and ~/Applications)

@@ -4,6 +4,9 @@ import { FolderOpen } from 'lucide-react';
 type IconProps = ComponentProps<'svg'>;
 type IconComponent = ComponentType<IconProps>;
 
+const ANTIGRAVITY_COMMANDS = ['antigravity', 'agy'] as const;
+const [PRIMARY_ANTIGRAVITY_COMMAND, LEGACY_ANTIGRAVITY_COMMAND] = ANTIGRAVITY_COMMANDS;
+
 /**
  * Cursor editor logo icon - from LobeHub icons
  */
@@ -160,7 +163,8 @@ export function getEditorIcon(command: string): IconComponent {
     webstorm: WebStormIcon,
     xed: XcodeIcon,
     studio: AndroidStudioIcon,
-    agy: AntigravityIcon,
+    [PRIMARY_ANTIGRAVITY_COMMAND]: AntigravityIcon,
+    [LEGACY_ANTIGRAVITY_COMMAND]: AntigravityIcon,
     open: FinderIcon,
     explorer: FolderOpen,
     'xdg-open': FolderOpen,
