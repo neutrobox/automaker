@@ -419,7 +419,7 @@ export function BacklogPlanDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="py-4">{renderContent()}</div>
+        <div className="py-4 overflow-y-auto">{renderContent()}</div>
 
         <DialogFooter>
           {mode === 'input' && (
