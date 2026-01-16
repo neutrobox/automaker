@@ -77,7 +77,7 @@ export async function loadBacklogPlan(projectPath: string): Promise<StoredBacklo
   try {
     const filePath = getBacklogPlanPath(projectPath);
     const raw = await secureFs.readFile(filePath, 'utf-8');
-    const parsed = JSON.parse(raw) as StoredBacklogPlan;
+    const parsed = JSON.parse(raw as string) as StoredBacklogPlan;
     if (!parsed?.result?.changes) {
       return null;
     }
