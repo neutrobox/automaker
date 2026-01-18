@@ -13,7 +13,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { BranchAutocomplete } from '@/components/ui/branch-autocomplete';
-import { GitPullRequest, Loader2, ExternalLink } from 'lucide-react';
+import { GitPullRequest, ExternalLink } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import { getElectronAPI } from '@/lib/electron';
 import { toast } from 'sonner';
 
@@ -405,7 +406,7 @@ export function CreatePRDialog({
               <Button onClick={handleCreate} disabled={isLoading}>
                 {isLoading ? (
                   <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    <Spinner size="sm" className="mr-2" />
                     Creating...
                   </>
                 ) : (

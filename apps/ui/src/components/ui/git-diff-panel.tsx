@@ -9,11 +9,11 @@ import {
   FilePen,
   ChevronDown,
   ChevronRight,
-  Loader2,
   RefreshCw,
   GitBranch,
   AlertCircle,
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import { Button } from './button';
 import type { FileStatus } from '@/types/electron';
 
@@ -484,7 +484,7 @@ export function GitDiffPanel({
         <div className="border-t border-border">
           {isLoading ? (
             <div className="flex items-center justify-center gap-2 py-8 text-muted-foreground">
-              <Loader2 className="w-5 h-5 animate-spin" />
+              <Spinner size="md" />
               <span className="text-sm">Loading changes...</span>
             </div>
           ) : error ? (

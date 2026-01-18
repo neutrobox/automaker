@@ -34,7 +34,7 @@ import { pathsEqual } from '@/lib/utils';
 import { toast } from 'sonner';
 import { getBlockingDependencies } from '@automaker/dependency-resolver';
 import { BoardBackgroundModal } from '@/components/dialogs/board-background-modal';
-import { RefreshCw } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import { useAutoMode } from '@/hooks/use-auto-mode';
 import { useKeyboardShortcutsConfig } from '@/hooks/use-keyboard-shortcuts';
 import { useWindowState } from '@/hooks/use-window-state';
@@ -1384,7 +1384,7 @@ export function BoardView() {
   if (isLoading) {
     return (
       <div className="flex-1 flex items-center justify-center" data-testid="board-view-loading">
-        <RefreshCw className="w-6 h-6 animate-spin text-muted-foreground" />
+        <Spinner size="lg" />
       </div>
     );
   }

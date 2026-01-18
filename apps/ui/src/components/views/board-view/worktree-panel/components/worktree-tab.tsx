@@ -1,6 +1,7 @@
 import type { JSX } from 'react';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, Globe, Loader2, CircleDot, GitPullRequest } from 'lucide-react';
+import { Globe, CircleDot, GitPullRequest } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { WorktreeInfo, BranchInfo, DevServerInfo, PRInfo, GitRepoStatus } from '../types';
@@ -197,8 +198,8 @@ export function WorktreeTab({
             aria-label={worktree.branch}
             data-testid={`worktree-branch-${worktree.branch}`}
           >
-            {isRunning && <Loader2 className="w-3 h-3 animate-spin" />}
-            {isActivating && !isRunning && <RefreshCw className="w-3 h-3 animate-spin" />}
+            {isRunning && <Spinner size="xs" />}
+            {isActivating && !isRunning && <Spinner size="xs" />}
             {worktree.branch}
             {cardCount !== undefined && cardCount > 0 && (
               <span className="inline-flex items-center justify-center h-4 min-w-[1rem] px-1 text-[10px] font-medium rounded bg-background/80 text-foreground border border-border">
@@ -264,8 +265,8 @@ export function WorktreeTab({
               : 'Click to switch to this branch'
           }
         >
-          {isRunning && <Loader2 className="w-3 h-3 animate-spin" />}
-          {isActivating && !isRunning && <RefreshCw className="w-3 h-3 animate-spin" />}
+          {isRunning && <Spinner size="xs" />}
+          {isActivating && !isRunning && <Spinner size="xs" />}
           {worktree.branch}
           {cardCount !== undefined && cardCount > 0 && (
             <span className="inline-flex items-center justify-center h-4 min-w-[1rem] px-1 text-[10px] font-medium rounded bg-background/80 text-foreground border border-border">

@@ -13,7 +13,6 @@ import {
   CheckSquare,
   Trash2,
   ImageIcon,
-  Loader2,
   Settings,
   RotateCcw,
   Search,
@@ -24,6 +23,7 @@ import {
   ArrowDown,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Spinner } from '@/components/ui/spinner';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Slider } from '@/components/ui/slider';
@@ -1743,7 +1743,7 @@ export function TerminalPanel({
           <div className="flex flex-col items-center gap-2 px-4 py-3 bg-blue-500/90 rounded-md text-white">
             {isProcessingImage ? (
               <>
-                <Loader2 className="h-6 w-6 animate-spin" />
+                <Spinner size="lg" />
                 <span className="text-sm font-medium">Processing...</span>
               </>
             ) : (
@@ -1791,7 +1791,7 @@ export function TerminalPanel({
           )}
           {connectionStatus === 'reconnecting' && (
             <span className="text-[10px] px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-500 flex items-center gap-1">
-              <Loader2 className="h-2.5 w-2.5 animate-spin" />
+              <Spinner size="xs" />
               Reconnecting...
             </span>
           )}

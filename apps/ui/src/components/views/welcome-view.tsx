@@ -20,8 +20,8 @@ import {
   Sparkles,
   MessageSquare,
   ChevronDown,
-  Loader2,
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -758,7 +758,7 @@ export function WelcomeView() {
               <div className="mt-5 p-4 rounded-xl bg-muted/50 border border-border">
                 {isAnalyzing ? (
                   <div className="flex items-center gap-3">
-                    <Loader2 className="w-4 h-4 text-brand-500 animate-spin" />
+                    <Spinner size="sm" />
                     <p className="text-sm text-brand-500">
                       AI agent is analyzing your project structure...
                     </p>
@@ -802,7 +802,7 @@ export function WelcomeView() {
           data-testid="project-opening-overlay"
         >
           <div className="flex flex-col items-center gap-4 p-8 rounded-2xl bg-card border border-border shadow-2xl">
-            <Loader2 className="w-10 h-10 text-brand-500 animate-spin" />
+            <Spinner size="xl" />
             <p className="text-foreground font-medium">Initializing project...</p>
           </div>
         </div>

@@ -3,7 +3,8 @@
  */
 
 import { useState, useMemo } from 'react';
-import { ArrowLeft, Lightbulb, Loader2, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Lightbulb, CheckCircle2 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import { Card, CardContent } from '@/components/ui/card';
 import { useGuidedPrompts } from '@/hooks/use-guided-prompts';
 import { useIdeationStore } from '@/store/ideation-store';
@@ -121,7 +122,7 @@ export function PromptList({ category, onBack }: PromptListProps) {
         <div className="space-y-3">
           {isLoadingPrompts && (
             <div className="flex items-center justify-center py-8">
-              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              <Spinner size="lg" />
               <span className="ml-2 text-muted-foreground">Loading prompts...</span>
             </div>
           )}
@@ -162,7 +163,7 @@ export function PromptList({ category, onBack }: PromptListProps) {
                         }`}
                       >
                         {isLoading || isGenerating ? (
-                          <Loader2 className="w-5 h-5 animate-spin" />
+                          <Spinner size="md" />
                         ) : isStarted ? (
                           <CheckCircle2 className="w-5 h-5" />
                         ) : (

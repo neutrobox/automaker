@@ -4,6 +4,7 @@ import { getElectronAPI } from '@/lib/electron';
 import { useSetupStore } from '@/store/setup-store';
 import { useAppStore } from '@/store/app-store';
 import { Button } from '@/components/ui/button';
+import { Spinner } from '@/components/ui/spinner';
 import { RefreshCw, AlertCircle } from 'lucide-react';
 
 const ERROR_NO_API = 'Claude usage API not available';
@@ -178,7 +179,7 @@ export function ClaudeUsageSection() {
             data-testid="refresh-claude-usage"
             title={CLAUDE_REFRESH_LABEL}
           >
-            <RefreshCw className={cn('w-4 h-4', isLoading && 'animate-spin')} />
+            {isLoading ? <Spinner size="sm" /> : <RefreshCw className="w-4 h-4" />}
           </Button>
         </div>
         <p className="text-sm text-muted-foreground/80 ml-12">{CLAUDE_USAGE_SUBTITLE}</p>

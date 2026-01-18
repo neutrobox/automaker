@@ -3,6 +3,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { RefreshCw, AlertTriangle, CheckCircle, XCircle, Clock, ExternalLink } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import { cn } from '@/lib/utils';
 import { getElectronAPI } from '@/lib/electron';
 import { useAppStore } from '@/store/app-store';
@@ -449,7 +450,7 @@ export function UsagePopover() {
                 </div>
               ) : !claudeUsage ? (
                 <div className="flex flex-col items-center justify-center py-8 space-y-2">
-                  <RefreshCw className="w-6 h-6 animate-spin text-muted-foreground/50" />
+                  <Spinner size="lg" />
                   <p className="text-xs text-muted-foreground">Loading usage data...</p>
                 </div>
               ) : (
@@ -568,7 +569,7 @@ export function UsagePopover() {
                 </div>
               ) : !codexUsage ? (
                 <div className="flex flex-col items-center justify-center py-8 space-y-2">
-                  <RefreshCw className="w-6 h-6 animate-spin text-muted-foreground/50" />
+                  <Spinner size="lg" />
                   <p className="text-xs text-muted-foreground">Loading usage data...</p>
                 </div>
               ) : codexUsage.rateLimits ? (

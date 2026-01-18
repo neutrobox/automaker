@@ -11,7 +11,8 @@ import { PromptList } from './components/prompt-list';
 import { IdeationDashboard } from './components/ideation-dashboard';
 import { useGuidedPrompts } from '@/hooks/use-guided-prompts';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, ChevronRight, Lightbulb, CheckCheck, Loader2, Trash2 } from 'lucide-react';
+import { ArrowLeft, ChevronRight, Lightbulb, CheckCheck, Trash2 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import type { IdeaCategory } from '@automaker/types';
 import type { IdeationMode } from '@/store/ideation-store';
 
@@ -152,11 +153,7 @@ function IdeationHeader({
             className="gap-2"
             disabled={isAcceptingAll}
           >
-            {isAcceptingAll ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <CheckCheck className="w-4 h-4" />
-            )}
+            {isAcceptingAll ? <Spinner size="sm" /> : <CheckCheck className="w-4 h-4" />}
             Accept All ({acceptAllCount})
           </Button>
         )}

@@ -6,7 +6,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Loader2, List, FileText, GitBranch, ClipboardList } from 'lucide-react';
+import { List, FileText, GitBranch, ClipboardList } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import { getElectronAPI } from '@/lib/electron';
 import { LogViewer } from '@/components/ui/log-viewer';
 import { GitDiffPanel } from '@/components/ui/git-diff-panel';
@@ -353,7 +354,7 @@ export function AgentOutputModal({
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pr-8">
             <DialogTitle className="flex items-center gap-2">
               {featureStatus !== 'verified' && featureStatus !== 'waiting_approval' && (
-                <Loader2 className="w-5 h-5 text-primary animate-spin" />
+                <Spinner size="md" />
               )}
               Agent Output
             </DialogTitle>
@@ -439,7 +440,7 @@ export function AgentOutputModal({
               />
             ) : (
               <div className="flex items-center justify-center h-full text-muted-foreground">
-                <Loader2 className="w-6 h-6 animate-spin mr-2" />
+                <Spinner size="lg" className="mr-2" />
                 Loading...
               </div>
             )}
@@ -457,7 +458,7 @@ export function AgentOutputModal({
             >
               {isLoading && !output ? (
                 <div className="flex items-center justify-center h-full text-muted-foreground">
-                  <Loader2 className="w-6 h-6 animate-spin mr-2" />
+                  <Spinner size="lg" className="mr-2" />
                   Loading output...
                 </div>
               ) : !output ? (

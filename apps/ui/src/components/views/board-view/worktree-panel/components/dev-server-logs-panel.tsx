@@ -2,7 +2,6 @@ import { useEffect, useRef, useCallback, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import {
-  Loader2,
   Terminal,
   ArrowDown,
   ExternalLink,
@@ -12,6 +11,7 @@ import {
   Clock,
   GitBranch,
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import { cn } from '@/lib/utils';
 import { XtermLogViewer, type XtermLogViewerRef } from '@/components/ui/xterm-log-viewer';
 import { useDevServerLogs } from '../hooks/use-dev-server-logs';
@@ -183,7 +183,7 @@ export function DevServerLogsPanel({
                 onClick={() => fetchLogs()}
                 title="Refresh logs"
               >
-                <RefreshCw className={cn('w-3.5 h-3.5', isLoading && 'animate-spin')} />
+                {isLoading ? <Spinner size="xs" /> : <RefreshCw className="w-3.5 h-3.5" />}
               </Button>
             </div>
           </div>
@@ -234,7 +234,7 @@ export function DevServerLogsPanel({
         >
           {isLoading && !logs ? (
             <div className="flex items-center justify-center h-full min-h-[300px] text-muted-foreground">
-              <Loader2 className="w-5 h-5 animate-spin mr-2" />
+              <Spinner size="md" className="mr-2" />
               <span className="text-sm">Loading logs...</span>
             </div>
           ) : !logs && !isRunning ? (
@@ -245,7 +245,7 @@ export function DevServerLogsPanel({
             </div>
           ) : !logs ? (
             <div className="flex flex-col items-center justify-center h-full min-h-[300px] text-muted-foreground p-8">
-              <div className="w-8 h-8 mb-3 rounded-full border-2 border-muted-foreground/20 border-t-muted-foreground/60 animate-spin" />
+              <Spinner size="xl" className="mb-3" />
               <p className="text-sm">Waiting for output...</p>
               <p className="text-xs mt-1 opacity-60">
                 Logs will appear as the server generates output

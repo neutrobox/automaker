@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Spinner } from '@/components/ui/spinner';
 import { RefreshCw, AlertCircle } from 'lucide-react';
 import { OpenAIIcon } from '@/components/ui/provider-icon';
 import { cn } from '@/lib/utils';
@@ -168,7 +169,7 @@ export function CodexUsageSection() {
             data-testid="refresh-codex-usage"
             title={CODEX_REFRESH_LABEL}
           >
-            <RefreshCw className={cn('w-4 h-4', isLoading && 'animate-spin')} />
+            {isLoading ? <Spinner size="sm" /> : <RefreshCw className="w-4 h-4" />}
           </Button>
         </div>
         <p className="text-sm text-muted-foreground/80 ml-12">{CODEX_USAGE_SUBTITLE}</p>

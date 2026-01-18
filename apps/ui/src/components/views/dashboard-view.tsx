@@ -18,7 +18,6 @@ import {
   Folder,
   Star,
   Clock,
-  Loader2,
   ChevronDown,
   MessageSquare,
   MoreVertical,
@@ -28,6 +27,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import { Input } from '@/components/ui/input';
 import { getAuthenticatedImageUrl } from '@/lib/api-fetch';
 import {
@@ -1013,7 +1013,7 @@ export function DashboardView() {
           data-testid="project-opening-overlay"
         >
           <div className="flex flex-col items-center gap-4 p-8 rounded-2xl bg-card border border-border shadow-2xl">
-            <Loader2 className="w-10 h-10 text-brand-500 animate-spin" />
+            <Spinner size="xl" />
             <p className="text-foreground font-medium">Opening project...</p>
           </div>
         </div>

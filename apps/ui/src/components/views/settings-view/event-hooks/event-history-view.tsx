@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
+import { Spinner } from '@/components/ui/spinner';
 import { cn } from '@/lib/utils';
 import {
   History,
@@ -184,7 +185,11 @@ export function EventHistoryView() {
         </p>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={loadEvents} disabled={loading}>
-            <RefreshCw className={cn('w-4 h-4 mr-2', loading && 'animate-spin')} />
+            {loading ? (
+              <Spinner size="sm" className="mr-2" />
+            ) : (
+              <RefreshCw className="w-4 h-4 mr-2" />
+            )}
             Refresh
           </Button>
           {events.length > 0 && (

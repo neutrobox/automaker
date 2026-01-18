@@ -8,7 +8,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Folder, Loader2, FolderOpen, AlertCircle } from 'lucide-react';
+import { Folder, FolderOpen, AlertCircle } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import { getHttpApiClient } from '@/lib/http-api-client';
 
 interface WorkspaceDirectory {
@@ -74,7 +75,7 @@ export function WorkspacePickerModal({ open, onOpenChange, onSelect }: Workspace
         <div className="flex-1 overflow-y-auto py-4 min-h-[200px]">
           {isLoading && (
             <div className="flex flex-col items-center justify-center h-full gap-3">
-              <Loader2 className="w-8 h-8 text-brand-500 animate-spin" />
+              <Spinner size="xl" />
               <p className="text-sm text-muted-foreground">Loading projects...</p>
             </div>
           )}

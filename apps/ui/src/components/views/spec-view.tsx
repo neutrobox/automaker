@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { RefreshCw } from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
+import { Spinner } from '@/components/ui/spinner';
 
 // Extracted hooks
 import { useSpecLoading, useSpecSave, useSpecGeneration } from './spec-view/hooks';
@@ -86,7 +86,7 @@ export function SpecView() {
   if (isLoading) {
     return (
       <div className="flex-1 flex items-center justify-center" data-testid="spec-view-loading">
-        <RefreshCw className="w-6 h-6 animate-spin text-muted-foreground" />
+        <Spinner size="lg" />
       </div>
     );
   }

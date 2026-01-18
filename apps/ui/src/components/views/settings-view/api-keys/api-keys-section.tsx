@@ -1,7 +1,8 @@
 import { useAppStore } from '@/store/app-store';
 import { useSetupStore } from '@/store/setup-store';
 import { Button } from '@/components/ui/button';
-import { Key, CheckCircle2, Trash2, Loader2 } from 'lucide-react';
+import { Key, CheckCircle2, Trash2 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import { ApiKeyField } from './api-key-field';
 import { buildProviderConfigs } from '@/config/api-providers';
 import { SecurityNotice } from './security-notice';
@@ -142,7 +143,7 @@ export function ApiKeysSection() {
               data-testid="delete-anthropic-key"
             >
               {isDeletingAnthropicKey ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                <Spinner size="sm" className="mr-2" />
               ) : (
                 <Trash2 className="w-4 h-4 mr-2" />
               )}
@@ -159,7 +160,7 @@ export function ApiKeysSection() {
               data-testid="delete-openai-key"
             >
               {isDeletingOpenaiKey ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                <Spinner size="sm" className="mr-2" />
               ) : (
                 <Trash2 className="w-4 h-4 mr-2" />
               )}

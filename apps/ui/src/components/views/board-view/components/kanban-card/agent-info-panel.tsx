@@ -11,16 +11,8 @@ import {
 } from '@/lib/agent-context-parser';
 import { cn } from '@/lib/utils';
 import type { AutoModeEvent } from '@/types/electron';
-import {
-  Brain,
-  ListTodo,
-  Sparkles,
-  Expand,
-  CheckCircle2,
-  Circle,
-  Loader2,
-  Wrench,
-} from 'lucide-react';
+import { Brain, ListTodo, Sparkles, Expand, CheckCircle2, Circle, Wrench } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import { getElectronAPI } from '@/lib/electron';
 import { SummaryDialog } from './summary-dialog';
 import { getProviderIconForModel } from '@/components/ui/provider-icon';
@@ -338,7 +330,7 @@ export function AgentInfoPanel({
                       {todo.status === 'completed' ? (
                         <CheckCircle2 className="w-2.5 h-2.5 text-[var(--status-success)] shrink-0" />
                       ) : todo.status === 'in_progress' ? (
-                        <Loader2 className="w-2.5 h-2.5 text-[var(--status-warning)] animate-spin shrink-0" />
+                        <Spinner size="xs" className="w-2.5 h-2.5 shrink-0" />
                       ) : (
                         <Circle className="w-2.5 h-2.5 text-muted-foreground/50 shrink-0" />
                       )}

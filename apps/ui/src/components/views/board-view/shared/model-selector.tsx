@@ -11,7 +11,7 @@ import { getModelProvider, PROVIDER_PREFIXES, stripProviderPrefix } from '@autom
 import type { ModelProvider } from '@automaker/types';
 import { CLAUDE_MODELS, CURSOR_MODELS, ModelOption } from './model-constants';
 import { useEffect } from 'react';
-import { RefreshCw } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 
 interface ModelSelectorProps {
   selectedModel: string; // Can be ModelAlias or "cursor-{id}"
@@ -294,7 +294,7 @@ export function ModelSelector({
           {/* Loading state */}
           {codexModelsLoading && dynamicCodexModels.length === 0 && (
             <div className="flex items-center justify-center gap-2 p-6 text-sm text-muted-foreground">
-              <RefreshCw className="w-4 h-4 animate-spin" />
+              <Spinner size="sm" />
               Loading models...
             </div>
           )}

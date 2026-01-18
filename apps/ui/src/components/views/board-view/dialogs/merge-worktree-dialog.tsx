@@ -10,7 +10,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, GitMerge, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { GitMerge, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import { getElectronAPI } from '@/lib/electron';
 import { toast } from 'sonner';
 
@@ -217,7 +218,7 @@ export function MergeWorktreeDialog({
           >
             {isLoading ? (
               <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                <Spinner size="sm" className="mr-2" />
                 Merging...
               </>
             ) : (

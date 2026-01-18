@@ -17,7 +17,7 @@ import {
 import { useWorktrees } from './board-view/worktree-panel/hooks';
 import { useAutoMode } from '@/hooks/use-auto-mode';
 import { pathsEqual } from '@/lib/utils';
-import { RefreshCw } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import { getElectronAPI } from '@/lib/electron';
 import { createLogger } from '@automaker/utils/logger';
 import { toast } from 'sonner';
@@ -330,7 +330,7 @@ export function GraphViewPage() {
   if (isLoading) {
     return (
       <div className="flex-1 flex items-center justify-center" data-testid="graph-view-loading">
-        <RefreshCw className="w-6 h-6 animate-spin text-muted-foreground" />
+        <Spinner size="lg" />
       </div>
     );
   }

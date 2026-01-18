@@ -7,13 +7,13 @@ import {
   Unlock,
   SplitSquareHorizontal,
   SplitSquareVertical,
-  Loader2,
   AlertCircle,
   RefreshCw,
   X,
   SquarePlus,
   Settings,
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import { getServerUrlSync } from '@/lib/http-api-client';
 import {
   useAppStore,
@@ -1279,7 +1279,7 @@ export function TerminalView() {
   if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <Spinner size="xl" />
       </div>
     );
   }
@@ -1342,7 +1342,7 @@ export function TerminalView() {
           {authError && <p className="text-sm text-destructive">{authError}</p>}
           <Button type="submit" className="w-full" disabled={authLoading || !password}>
             {authLoading ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              <Spinner size="sm" className="mr-2" />
             ) : (
               <Unlock className="h-4 w-4 mr-2" />
             )}

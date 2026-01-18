@@ -1,9 +1,9 @@
 import type { NavigateOptions } from '@tanstack/react-router';
-import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatShortcut } from '@/store/app-store';
 import type { NavSection } from '../types';
 import type { Project } from '@/lib/electron';
+import { Spinner } from '@/components/ui/spinner';
 
 interface SidebarNavigationProps {
   currentProject: Project | null;
@@ -93,9 +93,10 @@ export function SidebarNavigation({
                   >
                     <div className="relative">
                       {item.isLoading ? (
-                        <Loader2
+                        <Spinner
+                          size="md"
                           className={cn(
-                            'w-[18px] h-[18px] shrink-0 animate-spin',
+                            'shrink-0',
                             isActive ? 'text-brand-500' : 'text-muted-foreground'
                           )}
                         />

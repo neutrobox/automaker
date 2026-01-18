@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { createLogger } from '@automaker/utils/logger';
-import { ImageIcon, Upload, Loader2, Trash2 } from 'lucide-react';
+import { ImageIcon, Upload, Trash2 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 
 const logger = createLogger('BoardBackgroundModal');
 import {
@@ -313,7 +314,7 @@ export function BoardBackgroundModal({ open, onOpenChange }: BoardBackgroundModa
                     />
                     {isProcessing && (
                       <div className="absolute inset-0 flex items-center justify-center bg-background/80">
-                        <Loader2 className="w-6 h-6 animate-spin text-brand-500" />
+                        <Spinner size="lg" />
                       </div>
                     )}
                   </div>
@@ -353,7 +354,7 @@ export function BoardBackgroundModal({ open, onOpenChange }: BoardBackgroundModa
                     )}
                   >
                     {isProcessing ? (
-                      <Upload className="h-6 w-6 animate-spin text-muted-foreground" />
+                      <Spinner size="lg" />
                     ) : (
                       <ImageIcon className="h-6 w-6 text-muted-foreground" />
                     )}

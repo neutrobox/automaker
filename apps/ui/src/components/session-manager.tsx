@@ -16,8 +16,8 @@ import {
   Check,
   X,
   ArchiveRestore,
-  Loader2,
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import { cn } from '@/lib/utils';
 import type { SessionListItem } from '@/types/electron';
 import { useKeyboardShortcutsConfig } from '@/hooks/use-keyboard-shortcuts';
@@ -466,7 +466,7 @@ export function SessionManager({
                       {/* Show loading indicator if this session is running (either current session thinking or any session in runningSessions) */}
                       {(currentSessionId === session.id && isCurrentSessionThinking) ||
                       runningSessions.has(session.id) ? (
-                        <Loader2 className="w-4 h-4 text-primary animate-spin shrink-0" />
+                        <Spinner size="sm" className="shrink-0" />
                       ) : (
                         <MessageSquare className="w-4 h-4 text-muted-foreground shrink-0" />
                       )}

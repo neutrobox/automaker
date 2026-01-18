@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { createLogger } from '@automaker/utils/logger';
-import { Bot, Folder, Loader2, RefreshCw, Square, Activity, FileText } from 'lucide-react';
+import { Bot, Folder, RefreshCw, Square, Activity, FileText } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import { getElectronAPI, RunningAgent } from '@/lib/electron';
 import { useAppStore } from '@/store/app-store';
 import { Button } from '@/components/ui/button';
@@ -146,7 +147,7 @@ export function RunningAgentsView() {
   if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <Spinner size="xl" />
       </div>
     );
   }
@@ -169,7 +170,11 @@ export function RunningAgentsView() {
           </div>
         </div>
         <Button variant="outline" size="sm" onClick={handleRefresh} disabled={refreshing}>
-          <RefreshCw className={cn('h-4 w-4 mr-2', refreshing && 'animate-spin')} />
+          {refreshing ? (
+            <Spinner size="sm" className="mr-2" />
+          ) : (
+            <RefreshCw className="h-4 w-4 mr-2" />
+          )}
           Refresh
         </Button>
       </div>

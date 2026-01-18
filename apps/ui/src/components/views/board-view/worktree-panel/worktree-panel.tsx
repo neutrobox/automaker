@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { GitBranch, Plus, RefreshCw } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import { cn, pathsEqual } from '@/lib/utils';
 import { toast } from 'sonner';
 import { getHttpApiClient } from '@/lib/http-api-client';
@@ -285,7 +286,7 @@ export function WorktreePanel({
               disabled={isLoading}
               title="Refresh worktrees"
             >
-              <RefreshCw className={cn('w-3.5 h-3.5', isLoading && 'animate-spin')} />
+              {isLoading ? <Spinner size="xs" /> : <RefreshCw className="w-3.5 h-3.5" />}
             </Button>
           </>
         )}
@@ -429,7 +430,7 @@ export function WorktreePanel({
               disabled={isLoading}
               title="Refresh worktrees"
             >
-              <RefreshCw className={cn('w-3.5 h-3.5', isLoading && 'animate-spin')} />
+              {isLoading ? <Spinner size="xs" /> : <RefreshCw className="w-3.5 h-3.5" />}
             </Button>
           </div>
         </>
