@@ -60,6 +60,7 @@ export function OpencodeSettingsTab() {
       hasApiKey: cliStatusData.auth.hasApiKey,
       hasEnvApiKey: cliStatusData.auth.hasEnvApiKey,
       hasOAuthToken: cliStatusData.auth.hasOAuthToken,
+      error: cliStatusData.auth.error,
     };
   }, [cliStatusData]);
 
