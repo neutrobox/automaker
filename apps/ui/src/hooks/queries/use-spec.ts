@@ -8,6 +8,7 @@ import { useQuery } from '@tanstack/react-query';
 import { getElectronAPI } from '@/lib/electron';
 import { queryKeys } from '@/lib/query-keys';
 import { STALE_TIMES } from '@/lib/query-client';
+import { getGlobalEventsRecent } from '@/hooks/use-event-recency';
 
 interface SpecFileResult {
   content: string;
@@ -98,6 +99,8 @@ export function useSpecRegenerationStatus(projectPath: string | undefined, enabl
     },
     enabled: !!projectPath && enabled,
     staleTime: 5000, // Check every 5 seconds when active
-    refetchInterval: enabled ? 5000 : false,
+    // Disable polling when WebSocket events are recent (within 5s)
+    // WebSocket invalidation handles updates in real-time
+    refetchInterval: enabled ? () => (getGlobalEventsRecent() ? false : 5000) : false,
   });
 }

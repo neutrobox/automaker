@@ -1,6 +1,15 @@
 export { useAutoMode } from './use-auto-mode';
 export { useBoardBackgroundSettings } from './use-board-background-settings';
 export { useElectronAgent } from './use-electron-agent';
+export {
+  useEventRecorder,
+  useEventRecency,
+  useEventRecencyStore,
+  getGlobalEventsRecent,
+  getEventsRecent,
+  createSmartPollingInterval,
+  EVENT_RECENCY_THRESHOLD,
+} from './use-event-recency';
 export { useGuidedPrompts } from './use-guided-prompts';
 export { useKeyboardShortcuts } from './use-keyboard-shortcuts';
 export { useMessageQueue } from './use-message-queue';

@@ -5,12 +5,48 @@
  * ensuring the UI stays in sync with server-side changes without manual refetching.
  */
 
-import { useEffect } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useEffect, useRef } from 'react';
+import { useQueryClient, QueryClient } from '@tanstack/react-query';
 import { getElectronAPI } from '@/lib/electron';
 import { queryKeys } from '@/lib/query-keys';
 import type { AutoModeEvent, SpecRegenerationEvent } from '@/types/electron';
 import type { IssueValidationEvent } from '@automaker/types';
+import { debounce, type DebouncedFunction } from '@automaker/utils/debounce';
+import { useEventRecencyStore } from './use-event-recency';
+
+/**
+ * Debounce configuration for auto_mode_progress invalidations
+ * - wait: 150ms delay to batch rapid consecutive progress events
+ * - maxWait: 2000ms ensures UI updates at least every 2 seconds during streaming
+ */
+const PROGRESS_DEBOUNCE_WAIT = 150;
+const PROGRESS_DEBOUNCE_MAX_WAIT = 2000;
+
+/**
+ * Creates a unique key for per-feature debounce tracking
+ */
+function getFeatureKey(projectPath: string, featureId: string): string {
+  return `${projectPath}:${featureId}`;
+}
+
+/**
+ * Creates a debounced invalidation function for a specific feature's agent output
+ */
+function createDebouncedInvalidation(
+  queryClient: QueryClient,
+  projectPath: string,
+  featureId: string
+): DebouncedFunction<() => void> {
+  return debounce(
+    () => {
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.features.agentOutput(projectPath, featureId),
+      });
+    },
+    PROGRESS_DEBOUNCE_WAIT,
+    { maxWait: PROGRESS_DEBOUNCE_MAX_WAIT }
+  );
+}
 
 /**
  * Invalidate queries based on auto mode events
@@ -31,12 +67,54 @@ import type { IssueValidationEvent } from '@automaker/types';
  */
 export function useAutoModeQueryInvalidation(projectPath: string | undefined) {
   const queryClient = useQueryClient();
+  const recordGlobalEvent = useEventRecencyStore((state) => state.recordGlobalEvent);
+
+  // Store per-feature debounced invalidation functions
+  // Using a ref to persist across renders without causing re-subscriptions
+  const debouncedInvalidationsRef = useRef<Map<string, DebouncedFunction<() => void>>>(new Map());
 
   useEffect(() => {
     if (!projectPath) return;
 
+    // Capture projectPath in a const to satisfy TypeScript's type narrowing
+    const currentProjectPath = projectPath;
+    const debouncedInvalidations = debouncedInvalidationsRef.current;
+
+    /**
+     * Get or create a debounced invalidation function for a specific feature
+     */
+    function getDebouncedInvalidation(featureId: string): DebouncedFunction<() => void> {
+      const key = getFeatureKey(currentProjectPath, featureId);
+      let debouncedFn = debouncedInvalidations.get(key);
+
+      if (!debouncedFn) {
+        debouncedFn = createDebouncedInvalidation(queryClient, currentProjectPath, featureId);
+        debouncedInvalidations.set(key, debouncedFn);
+      }
+
+      return debouncedFn;
+    }
+
+    /**
+     * Clean up debounced function for a feature (flush pending and remove)
+     */
+    function cleanupFeatureDebounce(featureId: string): void {
+      const key = getFeatureKey(currentProjectPath, featureId);
+      const debouncedFn = debouncedInvalidations.get(key);
+
+      if (debouncedFn) {
+        // Flush any pending invalidation before cleanup
+        debouncedFn.flush();
+        debouncedInvalidations.delete(key);
+      }
+    }
+
     const api = getElectronAPI();
     const unsubscribe = api.autoMode.onEvent((event: AutoModeEvent) => {
+      // Record that we received a WebSocket event (for event recency tracking)
+      // This allows polling to be disabled when WebSocket events are flowing
+      recordGlobalEvent();
+
       // Invalidate features when agent completes, errors, or receives plan approval
       if (
         event.type === 'auto_mode_feature_complete' ||
@@ -47,7 +125,7 @@ export function useAutoModeQueryInvalidation(projectPath: string | undefined) {
         event.type === 'pipeline_step_complete'
       ) {
         queryClient.invalidateQueries({
-          queryKey: queryKeys.features.all(projectPath),
+          queryKey: queryKeys.features.all(currentProjectPath),
         });
       }
 
@@ -72,30 +150,49 @@ export function useAutoModeQueryInvalidation(projectPath: string | undefined) {
         'featureId' in event
       ) {
         queryClient.invalidateQueries({
-          queryKey: queryKeys.features.single(projectPath, event.featureId),
+          queryKey: queryKeys.features.single(currentProjectPath, event.featureId),
         });
       }
 
-      // Invalidate agent output during progress updates
+      // Invalidate agent output during progress updates (DEBOUNCED)
+      // Uses per-feature debouncing to batch rapid progress events during streaming
       if (event.type === 'auto_mode_progress' && 'featureId' in event) {
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.features.agentOutput(projectPath, event.featureId),
-        });
+        const debouncedInvalidation = getDebouncedInvalidation(event.featureId);
+        debouncedInvalidation();
+      }
+
+      // Clean up debounced functions when feature completes or errors
+      // This ensures we flush any pending invalidations and free memory
+      if (
+        (event.type === 'auto_mode_feature_complete' || event.type === 'auto_mode_error') &&
+        'featureId' in event &&
+        event.featureId
+      ) {
+        cleanupFeatureDebounce(event.featureId);
       }
 
       // Invalidate worktree queries when feature completes (may have created worktree)
       if (event.type === 'auto_mode_feature_complete' && 'featureId' in event) {
         queryClient.invalidateQueries({
-          queryKey: queryKeys.worktrees.all(projectPath),
+          queryKey: queryKeys.worktrees.all(currentProjectPath),
         });
         queryClient.invalidateQueries({
-          queryKey: queryKeys.worktrees.single(projectPath, event.featureId),
+          queryKey: queryKeys.worktrees.single(currentProjectPath, event.featureId),
         });
       }
     });
 
-    return unsubscribe;
-  }, [projectPath, queryClient]);
+    // Cleanup on unmount: flush and clear all debounced functions
+    return () => {
+      unsubscribe();
+
+      // Flush all pending invalidations before cleanup
+      for (const debouncedFn of debouncedInvalidations.values()) {
+        debouncedFn.flush();
+      }
+      debouncedInvalidations.clear();
+    };
+  }, [projectPath, queryClient, recordGlobalEvent]);
 }
 
 /**
@@ -105,6 +202,7 @@ export function useAutoModeQueryInvalidation(projectPath: string | undefined) {
  */
 export function useSpecRegenerationQueryInvalidation(projectPath: string | undefined) {
   const queryClient = useQueryClient();
+  const recordGlobalEvent = useEventRecencyStore((state) => state.recordGlobalEvent);
 
   useEffect(() => {
     if (!projectPath) return;
@@ -113,6 +211,9 @@ export function useSpecRegenerationQueryInvalidation(projectPath: string | undef
     const unsubscribe = api.specRegeneration.onEvent((event: SpecRegenerationEvent) => {
       // Only handle events for the current project
       if (event.projectPath !== projectPath) return;
+
+      // Record that we received a WebSocket event
+      recordGlobalEvent();
 
       if (event.type === 'spec_regeneration_complete') {
         // Invalidate features as new ones may have been generated
@@ -128,7 +229,7 @@ export function useSpecRegenerationQueryInvalidation(projectPath: string | undef
     });
 
     return unsubscribe;
-  }, [projectPath, queryClient]);
+  }, [projectPath, queryClient, recordGlobalEvent]);
 }
 
 /**
@@ -138,6 +239,7 @@ export function useSpecRegenerationQueryInvalidation(projectPath: string | undef
  */
 export function useGitHubValidationQueryInvalidation(projectPath: string | undefined) {
   const queryClient = useQueryClient();
+  const recordGlobalEvent = useEventRecencyStore((state) => state.recordGlobalEvent);
 
   useEffect(() => {
     if (!projectPath) return;
@@ -150,6 +252,9 @@ export function useGitHubValidationQueryInvalidation(projectPath: string | undef
     }
 
     const unsubscribe = api.github.onValidationEvent((event: IssueValidationEvent) => {
+      // Record that we received a WebSocket event
+      recordGlobalEvent();
+
       if (event.type === 'validation_complete' || event.type === 'validation_error') {
         // Invalidate all validations for this project
         queryClient.invalidateQueries({
@@ -166,7 +271,7 @@ export function useGitHubValidationQueryInvalidation(projectPath: string | undef
     });
 
     return unsubscribe;
-  }, [projectPath, queryClient]);
+  }, [projectPath, queryClient, recordGlobalEvent]);
 }
 
 /**
@@ -176,6 +281,7 @@ export function useGitHubValidationQueryInvalidation(projectPath: string | undef
  */
 export function useSessionQueryInvalidation(sessionId: string | undefined) {
   const queryClient = useQueryClient();
+  const recordGlobalEvent = useEventRecencyStore((state) => state.recordGlobalEvent);
 
   useEffect(() => {
     if (!sessionId) return;
@@ -184,6 +290,9 @@ export function useSessionQueryInvalidation(sessionId: string | undefined) {
     const unsubscribe = api.agent.onStream((event) => {
       // Only handle events for the current session
       if ('sessionId' in event && event.sessionId !== sessionId) return;
+
+      // Record that we received a WebSocket event
+      recordGlobalEvent();
 
       // Invalidate session history when a message is complete
       if (event.type === 'complete' || event.type === 'message') {
@@ -201,7 +310,7 @@ export function useSessionQueryInvalidation(sessionId: string | undefined) {
     });
 
     return unsubscribe;
-  }, [sessionId, queryClient]);
+  }, [sessionId, queryClient, recordGlobalEvent]);
 }
 
 /**
