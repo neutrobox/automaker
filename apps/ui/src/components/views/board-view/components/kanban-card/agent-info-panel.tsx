@@ -117,7 +117,7 @@ export const AgentInfoPanel = memo(function AgentInfoPanel({
     }
     // If receiving WebSocket events, use longer polling interval as fallback
     if (isReceivingWsEvents) {
-      return 10000;
+      return WS_ACTIVITY_THRESHOLD;
     }
     // Default polling interval
     return 3000;

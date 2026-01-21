@@ -15,6 +15,8 @@ import type { Feature } from '@/store/app-store';
 
 const FEATURES_REFETCH_ON_FOCUS = false;
 const FEATURES_REFETCH_ON_RECONNECT = false;
+/** Default polling interval for agent output when WebSocket is inactive */
+const AGENT_OUTPUT_POLLING_INTERVAL = 5000;
 
 /**
  * Fetch all features for a project
@@ -136,7 +138,7 @@ export function useAgentOutput(
             }
             // Only poll if we have data and it's not empty (indicating active task)
             if (query.state.data && query.state.data.length > 0) {
-              return 5000; // 5 seconds
+              return AGENT_OUTPUT_POLLING_INTERVAL;
             }
             return false;
           },
