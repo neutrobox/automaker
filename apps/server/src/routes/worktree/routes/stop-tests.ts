@@ -12,14 +12,23 @@ import { getErrorMessage, logError } from '../common.js';
 export function createStopTestsHandler() {
   return async (req: Request, res: Response): Promise<void> => {
     try {
-      const { sessionId } = req.body as {
-        sessionId: string;
-      };
+      const body = req.body;
+
+      // Validate request body
+      if (!body || typeof body !== 'object') {
+        res.status(400).json({
+          success: false,
+          error: 'Request body must be an object',
+        });
+        return;
+      }
+
+      const sessionId = typeof body.sessionId === 'string' ? body.sessionId : undefined;
 
       if (!sessionId) {
         res.status(400).json({
           success: false,
-          error: 'sessionId is required',
+          error: 'sessionId is required and must be a string',
         });
         return;
       }

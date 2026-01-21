@@ -174,7 +174,7 @@ export function useTestRunners(worktreePath?: string) {
         const result = await api.worktree.getTestLogs(worktreePath);
 
         if (result.success && result.result) {
-          const { sessionId, runner, status, testFile, logs, startedAt, finishedAt, exitCode } =
+          const { sessionId, command, status, testFile, logs, startedAt, finishedAt, exitCode } =
             result.result;
 
           // Only add if we don't already have this session
@@ -183,7 +183,7 @@ export function useTestRunners(worktreePath?: string) {
             startSession({
               sessionId,
               worktreePath,
-              runner,
+              command,
               status,
               testFile,
               startedAt,

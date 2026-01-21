@@ -14,6 +14,39 @@ import type { Request, Response } from 'express';
 import { getTestRunnerService } from '../../../services/test-runner-service.js';
 import { getErrorMessage, logError } from '../common.js';
 
+interface SessionInfo {
+  sessionId: string;
+  worktreePath?: string;
+  command?: string;
+  testFile?: string;
+  exitCode?: number | null;
+}
+
+interface OutputResult {
+  sessionId: string;
+  status: string;
+  output: string;
+  startedAt: string;
+  finishedAt?: string | null;
+}
+
+function buildLogsResponse(session: SessionInfo, output: OutputResult) {
+  return {
+    success: true,
+    result: {
+      sessionId: session.sessionId,
+      worktreePath: session.worktreePath,
+      command: session.command,
+      status: output.status,
+      testFile: session.testFile,
+      logs: output.output,
+      startedAt: output.startedAt,
+      finishedAt: output.finishedAt,
+      exitCode: session.exitCode ?? null,
+    },
+  };
+}
+
 export function createGetTestLogsHandler() {
   return async (req: Request, res: Response): Promise<void> => {
     try {
@@ -30,20 +63,18 @@ export function createGetTestLogsHandler() {
 
         if (result.success && result.result) {
           const session = testRunnerService.getSession(sessionId);
-          res.json({
-            success: true,
-            result: {
-              sessionId: result.result.sessionId,
-              worktreePath: session?.worktreePath,
-              command: session?.command,
-              status: result.result.status,
-              testFile: session?.testFile,
-              logs: result.result.output,
-              startedAt: result.result.startedAt,
-              finishedAt: result.result.finishedAt,
-              exitCode: session?.exitCode ?? null,
-            },
-          });
+          res.json(
+            buildLogsResponse(
+              {
+                sessionId: result.result.sessionId,
+                worktreePath: session?.worktreePath,
+                command: session?.command,
+                testFile: session?.testFile,
+                exitCode: session?.exitCode,
+              },
+              result.result
+            )
+          );
         } else {
           res.status(404).json({
             success: false,
@@ -61,20 +92,18 @@ export function createGetTestLogsHandler() {
           const result = testRunnerService.getSessionOutput(activeSession.id);
 
           if (result.success && result.result) {
-            res.json({
-              success: true,
-              result: {
-                sessionId: activeSession.id,
-                worktreePath: activeSession.worktreePath,
-                command: activeSession.command,
-                status: result.result.status,
-                testFile: activeSession.testFile,
-                logs: result.result.output,
-                startedAt: result.result.startedAt,
-                finishedAt: result.result.finishedAt,
-                exitCode: activeSession.exitCode,
-              },
-            });
+            res.json(
+              buildLogsResponse(
+                {
+                  sessionId: activeSession.id,
+                  worktreePath: activeSession.worktreePath,
+                  command: activeSession.command,
+                  testFile: activeSession.testFile,
+                  exitCode: activeSession.exitCode,
+                },
+                result.result
+              )
+            );
           } else {
             res.status(404).json({
               success: false,
@@ -94,20 +123,18 @@ export function createGetTestLogsHandler() {
 
             const result = testRunnerService.getSessionOutput(mostRecent.sessionId);
             if (result.success && result.result) {
-              res.json({
-                success: true,
-                result: {
-                  sessionId: mostRecent.sessionId,
-                  worktreePath: mostRecent.worktreePath,
-                  command: mostRecent.command,
-                  status: result.result.status,
-                  testFile: mostRecent.testFile,
-                  logs: result.result.output,
-                  startedAt: result.result.startedAt,
-                  finishedAt: result.result.finishedAt,
-                  exitCode: mostRecent.exitCode,
-                },
-              });
+              res.json(
+                buildLogsResponse(
+                  {
+                    sessionId: mostRecent.sessionId,
+                    worktreePath: mostRecent.worktreePath,
+                    command: mostRecent.command,
+                    testFile: mostRecent.testFile,
+                    exitCode: mostRecent.exitCode,
+                  },
+                  result.result
+                )
+              );
               return;
             }
           }

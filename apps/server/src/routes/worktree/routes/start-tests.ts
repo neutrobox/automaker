@@ -13,16 +13,25 @@ import { getErrorMessage, logError } from '../common.js';
 export function createStartTestsHandler(settingsService?: SettingsService) {
   return async (req: Request, res: Response): Promise<void> => {
     try {
-      const { worktreePath, projectPath, testFile } = req.body as {
-        worktreePath: string;
-        projectPath?: string;
-        testFile?: string;
-      };
+      const body = req.body;
+
+      // Validate request body
+      if (!body || typeof body !== 'object') {
+        res.status(400).json({
+          success: false,
+          error: 'Request body must be an object',
+        });
+        return;
+      }
+
+      const worktreePath = typeof body.worktreePath === 'string' ? body.worktreePath : undefined;
+      const projectPath = typeof body.projectPath === 'string' ? body.projectPath : undefined;
+      const testFile = typeof body.testFile === 'string' ? body.testFile : undefined;
 
       if (!worktreePath) {
         res.status(400).json({
           success: false,
-          error: 'worktreePath is required',
+          error: 'worktreePath is required and must be a string',
         });
         return;
       }
@@ -41,12 +50,6 @@ export function createStartTestsHandler(settingsService?: SettingsService) {
 
       const projectSettings = await settingsService.getProjectSettings(settingsPath);
       const testCommand = projectSettings?.testCommand;
-
-      // Debug logging
-      console.log('[StartTests] settingsPath:', settingsPath);
-      console.log('[StartTests] projectSettings:', JSON.stringify(projectSettings, null, 2));
-      console.log('[StartTests] testCommand:', testCommand);
-      console.log('[StartTests] testCommand type:', typeof testCommand);
 
       if (!testCommand) {
         res.status(400).json({

@@ -614,7 +614,6 @@ export function WorktreePanel({
             onStopTests={handleStopTests}
             onViewTestLogs={handleViewTestLogs}
             hasInitScript={hasInitScript}
-            hasTestCommand={hasTestCommand}
           />
         )}
 
