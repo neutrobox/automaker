@@ -16,6 +16,8 @@ import { createBulkDeleteHandler } from './routes/bulk-delete.js';
 import { createDeleteHandler } from './routes/delete.js';
 import { createAgentOutputHandler, createRawOutputHandler } from './routes/agent-output.js';
 import { createGenerateTitleHandler } from './routes/generate-title.js';
+import { createExportHandler } from './routes/export.js';
+import { createImportHandler, createConflictCheckHandler } from './routes/import.js';
 
 export function createFeaturesRoutes(
   featureLoader: FeatureLoader,
@@ -46,6 +48,13 @@ export function createFeaturesRoutes(
   router.post('/agent-output', createAgentOutputHandler(featureLoader));
   router.post('/raw-output', createRawOutputHandler(featureLoader));
   router.post('/generate-title', createGenerateTitleHandler(settingsService));
+  router.post('/export', validatePathParams('projectPath'), createExportHandler(featureLoader));
+  router.post('/import', validatePathParams('projectPath'), createImportHandler(featureLoader));
+  router.post(
+    '/check-conflicts',
+    validatePathParams('projectPath'),
+    createConflictCheckHandler(featureLoader)
+  );
 
   return router;
 }

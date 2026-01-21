@@ -1,5 +1,13 @@
 import type { LucideIcon } from 'lucide-react';
-import { User, GitBranch, Palette, AlertTriangle, Workflow, FlaskConical } from 'lucide-react';
+import {
+  User,
+  GitBranch,
+  Palette,
+  AlertTriangle,
+  Workflow,
+  Database,
+  FlaskConical,
+} from 'lucide-react';
 import type { ProjectSettingsViewId } from '../hooks/use-project-settings-view';
 
 export interface ProjectNavigationItem {
@@ -14,5 +22,6 @@ export const PROJECT_SETTINGS_NAV_ITEMS: ProjectNavigationItem[] = [
   { id: 'testing', label: 'Testing', icon: FlaskConical },
   { id: 'theme', label: 'Theme', icon: Palette },
   { id: 'claude', label: 'Models', icon: Workflow },
+  { id: 'data', label: 'Data', icon: Database },
   { id: 'danger', label: 'Danger Zone', icon: AlertTriangle },
 ];

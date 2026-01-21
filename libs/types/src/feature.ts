@@ -72,3 +72,58 @@ export interface Feature {
 }
 
 export type FeatureStatus = 'pending' | 'running' | 'completed' | 'failed' | 'verified';
+
+/**
+ * Export format for a feature, used when exporting features to share or backup
+ */
+export interface FeatureExport {
+  /** Export format version for compatibility checking */
+  version: string;
+  /** The feature data being exported */
+  feature: Feature;
+  /** ISO date string when the export was created */
+  exportedAt: string;
+  /** Optional identifier of who/what performed the export */
+  exportedBy?: string;
+  /** Additional metadata about the export context */
+  metadata?: {
+    projectName?: string;
+    projectPath?: string;
+    branch?: string;
+    [key: string]: unknown;
+  };
+}
+
+/**
+ * Options for importing a feature
+ */
+export interface FeatureImport {
+  /** The feature data to import (can be raw Feature or wrapped FeatureExport) */
+  data: Feature | FeatureExport;
+  /** Whether to overwrite an existing feature with the same ID */
+  overwrite?: boolean;
+  /** Whether to preserve the original branchName or ignore it */
+  preserveBranchInfo?: boolean;
+  /** Optional new ID to assign (if not provided, uses the feature's existing ID) */
+  newId?: string;
+  /** Optional new category to assign */
+  targetCategory?: string;
+}
+
+/**
+ * Result of a feature import operation
+ */
+export interface FeatureImportResult {
+  /** Whether the import was successful */
+  success: boolean;
+  /** The ID of the imported feature */
+  featureId?: string;
+  /** ISO date string when the import was completed */
+  importedAt: string;
+  /** Non-fatal warnings encountered during import */
+  warnings?: string[];
+  /** Errors that caused import failure */
+  errors?: string[];
+  /** Whether an existing feature was overwritten */
+  wasOverwritten?: boolean;
+}

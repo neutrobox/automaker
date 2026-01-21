@@ -64,6 +64,9 @@ export type {
   FeatureTextFilePath,
   FeatureStatus,
   DescriptionHistoryEntry,
+  FeatureExport,
+  FeatureImport,
+  FeatureImportResult,
 } from './feature.js';
 
 // Session types

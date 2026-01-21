@@ -1692,6 +1692,64 @@ export class HttpApiClient implements ElectronAPI {
       results?: Array<{ featureId: string; success: boolean; error?: string }>;
       error?: string;
     }>;
+    export: (
+      projectPath: string,
+      options?: {
+        featureIds?: string[];
+        format?: 'json' | 'yaml';
+        includeHistory?: boolean;
+        includePlanSpec?: boolean;
+        category?: string;
+        status?: string;
+        prettyPrint?: boolean;
+        metadata?: Record<string, unknown>;
+      }
+    ) => Promise<{
+      success: boolean;
+      data?: string;
+      format?: 'json' | 'yaml';
+      contentType?: string;
+      filename?: string;
+      error?: string;
+    }>;
+    import: (
+      projectPath: string,
+      data: string,
+      options?: {
+        overwrite?: boolean;
+        preserveBranchInfo?: boolean;
+        targetCategory?: string;
+      }
+    ) => Promise<{
+      success: boolean;
+      importedCount?: number;
+      failedCount?: number;
+      results?: Array<{
+        success: boolean;
+        featureId?: string;
+        importedAt: string;
+        warnings?: string[];
+        errors?: string[];
+        wasOverwritten?: boolean;
+      }>;
+      error?: string;
+    }>;
+    checkConflicts: (
+      projectPath: string,
+      data: string
+    ) => Promise<{
+      success: boolean;
+      hasConflicts?: boolean;
+      conflicts?: Array<{
+        featureId: string;
+        title?: string;
+        existingTitle?: string;
+        hasConflict: boolean;
+      }>;
+      totalFeatures?: number;
+      conflictCount?: number;
+      error?: string;
+    }>;
   } = {
     getAll: (projectPath: string) => this.post('/api/features/list', { projectPath }),
     get: (projectPath: string, featureId: string) =>
@@ -1724,6 +1782,64 @@ export class HttpApiClient implements ElectronAPI {
       this.post('/api/features/bulk-update', { projectPath, featureIds, updates }),
     bulkDelete: (projectPath: string, featureIds: string[]) =>
       this.post('/api/features/bulk-delete', { projectPath, featureIds }),
+    export: (
+      projectPath: string,
+      options?: {
+        featureIds?: string[];
+        format?: 'json' | 'yaml';
+        includeHistory?: boolean;
+        includePlanSpec?: boolean;
+        category?: string;
+        status?: string;
+        prettyPrint?: boolean;
+        metadata?: Record<string, unknown>;
+      }
+    ): Promise<{
+      success: boolean;
+      data?: string;
+      format?: 'json' | 'yaml';
+      contentType?: string;
+      filename?: string;
+      error?: string;
+    }> => this.post('/api/features/export', { projectPath, ...options }),
+    import: (
+      projectPath: string,
+      data: string,
+      options?: {
+        overwrite?: boolean;
+        preserveBranchInfo?: boolean;
+        targetCategory?: string;
+      }
+    ): Promise<{
+      success: boolean;
+      importedCount?: number;
+      failedCount?: number;
+      results?: Array<{
+        success: boolean;
+        featureId?: string;
+        importedAt: string;
+        warnings?: string[];
+        errors?: string[];
+        wasOverwritten?: boolean;
+      }>;
+      error?: string;
+    }> => this.post('/api/features/import', { projectPath, data, ...options }),
+    checkConflicts: (
+      projectPath: string,
+      data: string
+    ): Promise<{
+      success: boolean;
+      hasConflicts?: boolean;
+      conflicts?: Array<{
+        featureId: string;
+        title?: string;
+        existingTitle?: string;
+        hasConflict: boolean;
+      }>;
+      totalFeatures?: number;
+      conflictCount?: number;
+      error?: string;
+    }> => this.post('/api/features/check-conflicts', { projectPath, data }),
   };
 
   // Auto Mode API

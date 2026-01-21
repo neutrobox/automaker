@@ -6,6 +6,7 @@ export type ProjectSettingsViewId =
   | 'worktrees'
   | 'testing'
   | 'claude'
+  | 'data'
   | 'danger';
 
 interface UseProjectSettingsViewOptions {
