@@ -58,6 +58,7 @@ const SETTINGS_FIELDS_TO_SYNC = [
   'muteDoneSound',
   'serverLogLevel',
   'enableRequestLogging',
+  'showQueryDevtools',
   'enhancementModel',
   'validationModel',
   'phaseModels',

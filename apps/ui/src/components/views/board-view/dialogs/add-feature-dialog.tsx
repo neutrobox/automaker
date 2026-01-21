@@ -45,6 +45,7 @@ import {
   AncestorContextSection,
   EnhanceWithAI,
   EnhancementHistoryButton,
+  PipelineExclusionControls,
   type BaseHistoryEntry,
 } from '../shared';
 import type { WorkMode } from '../shared';
@@ -101,6 +102,7 @@ type FeatureData = {
   requirePlanApproval: boolean;
   dependencies?: string[];
   childDependencies?: string[]; // Feature IDs that should depend on this feature
+  excludedPipelineSteps?: string[]; // Pipeline step IDs to skip for this feature
   workMode: WorkMode;
 };
 
@@ -118,6 +120,10 @@ interface AddFeatureDialogProps {
   isMaximized: boolean;
   parentFeature?: Feature | null;
   allFeatures?: Feature[];
+  /**
+   * Path to the current project for loading pipeline config.
+   */
+  projectPath?: string;
   /**
    * When a non-main worktree is selected in the board header, this will be set to that worktree's branch.
    * When set, the dialog will default to 'custom' work mode with this branch pre-filled.
@@ -151,6 +157,7 @@ export function AddFeatureDialog({
   isMaximized,
   parentFeature = null,
   allFeatures = [],
+  projectPath,
   selectedNonMainWorktreeBranch,
   forceCurrentBranchMode,
 }: AddFeatureDialogProps) {
@@ -194,9 +201,20 @@ export function AddFeatureDialog({
   const [parentDependencies, setParentDependencies] = useState<string[]>([]);
   const [childDependencies, setChildDependencies] = useState<string[]>([]);
 
+  // Pipeline exclusion state
+  const [excludedPipelineSteps, setExcludedPipelineSteps] = useState<string[]>([]);
+
   // Get defaults from store
-  const { defaultPlanningMode, defaultRequirePlanApproval, useWorktrees, defaultFeatureModel } =
-    useAppStore();
+  const {
+    defaultPlanningMode,
+    defaultRequirePlanApproval,
+    useWorktrees,
+    defaultFeatureModel,
+    currentProject,
+  } = useAppStore();
+
+  // Use project-level default feature model if set, otherwise fall back to global
+  const effectiveDefaultFeatureModel = currentProject?.defaultFeatureModel ?? defaultFeatureModel;
 
   // Track previous open state to detect when dialog opens
   const wasOpenRef = useRef(false);
@@ -216,7 +234,7 @@ export function AddFeatureDialog({
       );
       setPlanningMode(defaultPlanningMode);
       setRequirePlanApproval(defaultRequirePlanApproval);
-      setModelEntry(defaultFeatureModel);
+      setModelEntry(effectiveDefaultFeatureModel);
 
       // Initialize description history (empty for new feature)
       setDescriptionHistory([]);
@@ -234,6 +252,9 @@ export function AddFeatureDialog({
       // Reset dependency selections
       setParentDependencies([]);
       setChildDependencies([]);
+
+      // Reset pipeline exclusions (all pipelines enabled by default)
+      setExcludedPipelineSteps([]);
     }
   }, [
     open,
@@ -241,7 +262,7 @@ export function AddFeatureDialog({
     defaultBranch,
     defaultPlanningMode,
     defaultRequirePlanApproval,
-    defaultFeatureModel,
+    effectiveDefaultFeatureModel,
     useWorktrees,
     selectedNonMainWorktreeBranch,
     forceCurrentBranchMode,
@@ -328,6 +349,7 @@ export function AddFeatureDialog({
       requirePlanApproval,
       dependencies: finalDependencies,
       childDependencies: childDependencies.length > 0 ? childDependencies : undefined,
+      excludedPipelineSteps: excludedPipelineSteps.length > 0 ? excludedPipelineSteps : undefined,
       workMode,
     };
   };
@@ -343,7 +365,7 @@ export function AddFeatureDialog({
     // When a non-main worktree is selected, use its branch name for custom mode
     setBranchName(selectedNonMainWorktreeBranch || '');
     setPriority(2);
-    setModelEntry(defaultFeatureModel);
+    setModelEntry(effectiveDefaultFeatureModel);
     setWorkMode(
       getDefaultWorkMode(useWorktrees, selectedNonMainWorktreeBranch, forceCurrentBranchMode)
     );
@@ -354,6 +376,7 @@ export function AddFeatureDialog({
     setDescriptionHistory([]);
     setParentDependencies([]);
     setChildDependencies([]);
+    setExcludedPipelineSteps([]);
     onOpenChange(false);
   };
 
@@ -696,6 +719,16 @@ export function AddFeatureDialog({
                 </div>
               </div>
             )}
+
+            {/* Pipeline Exclusion Controls */}
+            <div className="pt-2">
+              <PipelineExclusionControls
+                projectPath={projectPath}
+                excludedPipelineSteps={excludedPipelineSteps}
+                onExcludedStepsChange={setExcludedPipelineSteps}
+                testIdPrefix="add-feature-pipeline"
+              />
+            </div>
           </div>
         </div>
 

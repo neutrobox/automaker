@@ -3,9 +3,10 @@ import { memo, useEffect, useMemo, useState } from 'react';
 import { Feature, useAppStore } from '@/store/app-store';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { AlertCircle, Lock, Hand, Sparkles } from 'lucide-react';
+import { AlertCircle, Lock, Hand, Sparkles, SkipForward } from 'lucide-react';
 import { getBlockingDependencies } from '@automaker/dependency-resolver';
 import { useShallow } from 'zustand/react/shallow';
+import { usePipelineConfig } from '@/hooks/queries/use-pipeline';
 
 /** Uniform badge style for all card badges */
 const uniformBadgeClass =
@@ -51,9 +52,13 @@ export const CardBadges = memo(function CardBadges({ feature }: CardBadgesProps)
 
 interface PriorityBadgesProps {
   feature: Feature;
+  projectPath?: string;
 }
 
-export const PriorityBadges = memo(function PriorityBadges({ feature }: PriorityBadgesProps) {
+export const PriorityBadges = memo(function PriorityBadges({
+  feature,
+  projectPath,
+}: PriorityBadgesProps) {
   const { enableDependencyBlocking, features } = useAppStore(
     useShallow((state) => ({
       enableDependencyBlocking: state.enableDependencyBlocking,
@@ -61,6 +66,9 @@ export const PriorityBadges = memo(function PriorityBadges({ feature }: Priority
     }))
   );
   const [currentTime, setCurrentTime] = useState(() => Date.now());
+
+  // Fetch pipeline config to check if there are pipelines to exclude
+  const { data: pipelineConfig } = usePipelineConfig(projectPath);
 
   // Calculate blocking dependencies (if feature is in backlog and has incomplete dependencies)
   const blockingDependencies = useMemo(() => {
@@ -108,7 +116,19 @@ export const PriorityBadges = memo(function PriorityBadges({ feature }: Priority
   const showManualVerification =
     feature.skipTests && !feature.error && feature.status === 'backlog';
 
-  const showBadges = feature.priority || showManualVerification || isBlocked || isJustFinished;
+  // Check if feature has excluded pipeline steps
+  const excludedStepCount = feature.excludedPipelineSteps?.length || 0;
+  const totalPipelineSteps = pipelineConfig?.steps?.length || 0;
+  const hasPipelineExclusions =
+    excludedStepCount > 0 && totalPipelineSteps > 0 && feature.status === 'backlog';
+  const allPipelinesExcluded = hasPipelineExclusions && excludedStepCount >= totalPipelineSteps;
+
+  const showBadges =
+    feature.priority ||
+    showManualVerification ||
+    isBlocked ||
+    isJustFinished ||
+    hasPipelineExclusions;
 
   if (!showBadges) {
     return null;
@@ -223,6 +243,39 @@ export const PriorityBadges = memo(function PriorityBadges({ feature }: Priority
             </TooltipTrigger>
             <TooltipContent side="bottom" className="text-xs">
               <p>Agent just finished working on this feature</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )}
+
+      {/* Pipeline exclusion badge */}
+      {hasPipelineExclusions && (
+        <TooltipProvider delayDuration={200}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div
+                className={cn(
+                  uniformBadgeClass,
+                  allPipelinesExcluded
+                    ? 'bg-violet-500/20 border-violet-500/50 text-violet-500'
+                    : 'bg-violet-500/10 border-violet-500/30 text-violet-400'
+                )}
+                data-testid={`pipeline-exclusion-badge-${feature.id}`}
+              >
+                <SkipForward className="w-3.5 h-3.5" />
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-xs max-w-[250px]">
+              <p className="font-medium mb-1">
+                {allPipelinesExcluded
+                  ? 'All pipelines skipped'
+                  : `${excludedStepCount} of ${totalPipelineSteps} pipeline${totalPipelineSteps !== 1 ? 's' : ''} skipped`}
+              </p>
+              <p className="text-muted-foreground">
+                {allPipelinesExcluded
+                  ? 'This feature will skip all custom pipeline steps'
+                  : 'Some custom pipeline steps will be skipped for this feature'}
+              </p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>

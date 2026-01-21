@@ -24,7 +24,7 @@ import type {
   ClaudeCompatibleProvider,
   ClaudeModelAlias,
 } from '@automaker/types';
-import { DEFAULT_PHASE_MODELS } from '@automaker/types';
+import { DEFAULT_PHASE_MODELS, DEFAULT_GLOBAL_SETTINGS } from '@automaker/types';
 
 interface BulkReplaceDialogProps {
   open: boolean;
@@ -48,6 +48,10 @@ const PHASE_LABELS: Record<PhaseModelKey, string> = {
 
 const ALL_PHASES = Object.keys(PHASE_LABELS) as PhaseModelKey[];
 
+// Special key for default feature model (not a phase but included in bulk replace)
+const DEFAULT_FEATURE_MODEL_KEY = '__defaultFeatureModel__' as const;
+type ExtendedPhaseKey = PhaseModelKey | typeof DEFAULT_FEATURE_MODEL_KEY;
+
 // Claude model display names
 const CLAUDE_MODEL_DISPLAY: Record<ClaudeModelAlias, string> = {
   haiku: 'Claude Haiku',
@@ -56,7 +60,13 @@ const CLAUDE_MODEL_DISPLAY: Record<ClaudeModelAlias, string> = {
 };
 
 export function BulkReplaceDialog({ open, onOpenChange }: BulkReplaceDialogProps) {
-  const { phaseModels, setPhaseModel, claudeCompatibleProviders } = useAppStore();
+  const {
+    phaseModels,
+    setPhaseModel,
+    claudeCompatibleProviders,
+    defaultFeatureModel,
+    setDefaultFeatureModel,
+  } = useAppStore();
   const [selectedProvider, setSelectedProvider] = useState<string>('anthropic');
 
   // Get enabled providers
@@ -113,11 +123,15 @@ export function BulkReplaceDialog({ open, onOpenChange }: BulkReplaceDialogProps
   const findModelForClaudeAlias = (
     provider: ClaudeCompatibleProvider | null,
     claudeAlias: ClaudeModelAlias,
-    phase: PhaseModelKey
+    key: ExtendedPhaseKey
   ): PhaseModelEntry => {
     if (!provider) {
       // Anthropic Direct - reset to default phase model (includes correct thinking levels)
-      return DEFAULT_PHASE_MODELS[phase];
+      // For default feature model, use the default from global settings
+      if (key === DEFAULT_FEATURE_MODEL_KEY) {
+        return DEFAULT_GLOBAL_SETTINGS.defaultFeatureModel;
+      }
+      return DEFAULT_PHASE_MODELS[key];
     }
 
     // Find model that maps to this Claude alias
@@ -137,58 +151,83 @@ export function BulkReplaceDialog({ open, onOpenChange }: BulkReplaceDialogProps
     return { model: claudeAlias };
   };
 
+  // Helper to generate preview item for any entry
+  const generatePreviewItem = (
+    key: ExtendedPhaseKey,
+    label: string,
+    currentEntry: PhaseModelEntry
+  ) => {
+    const claudeAlias = getClaudeModelAlias(currentEntry);
+    const newEntry = findModelForClaudeAlias(selectedProviderConfig, claudeAlias, key);
+
+    // Get display names
+    const getCurrentDisplay = (): string => {
+      if (currentEntry.providerId) {
+        const provider = enabledProviders.find((p) => p.id === currentEntry.providerId);
+        if (provider) {
+          const model = provider.models?.find((m) => m.id === currentEntry.model);
+          return model?.displayName || currentEntry.model;
+        }
+      }
+      return CLAUDE_MODEL_DISPLAY[claudeAlias] || currentEntry.model;
+    };
+
+    const getNewDisplay = (): string => {
+      if (newEntry.providerId && selectedProviderConfig) {
+        const model = selectedProviderConfig.models?.find((m) => m.id === newEntry.model);
+        return model?.displayName || newEntry.model;
+      }
+      return CLAUDE_MODEL_DISPLAY[newEntry.model as ClaudeModelAlias] || newEntry.model;
+    };
+
+    const isChanged =
+      currentEntry.model !== newEntry.model ||
+      currentEntry.providerId !== newEntry.providerId ||
+      currentEntry.thinkingLevel !== newEntry.thinkingLevel;
+
+    return {
+      key,
+      label,
+      claudeAlias,
+      currentDisplay: getCurrentDisplay(),
+      newDisplay: getNewDisplay(),
+      newEntry,
+      isChanged,
+    };
+  };
+
   // Generate preview of changes
   const preview = useMemo(() => {
-    return ALL_PHASES.map((phase) => {
+    // Default feature model entry (first in the list)
+    const defaultFeatureModelEntry =
+      defaultFeatureModel ?? DEFAULT_GLOBAL_SETTINGS.defaultFeatureModel;
+    const defaultFeaturePreview = generatePreviewItem(
+      DEFAULT_FEATURE_MODEL_KEY,
+      'Default Feature Model',
+      defaultFeatureModelEntry
+    );
+
+    // Phase model entries
+    const phasePreview = ALL_PHASES.map((phase) => {
       const currentEntry = phaseModels[phase] ?? DEFAULT_PHASE_MODELS[phase];
-      const claudeAlias = getClaudeModelAlias(currentEntry);
-      const newEntry = findModelForClaudeAlias(selectedProviderConfig, claudeAlias, phase);
-
-      // Get display names
-      const getCurrentDisplay = (): string => {
-        if (currentEntry.providerId) {
-          const provider = enabledProviders.find((p) => p.id === currentEntry.providerId);
-          if (provider) {
-            const model = provider.models?.find((m) => m.id === currentEntry.model);
-            return model?.displayName || currentEntry.model;
-          }
-        }
-        return CLAUDE_MODEL_DISPLAY[claudeAlias] || currentEntry.model;
-      };
-
-      const getNewDisplay = (): string => {
-        if (newEntry.providerId && selectedProviderConfig) {
-          const model = selectedProviderConfig.models?.find((m) => m.id === newEntry.model);
-          return model?.displayName || newEntry.model;
-        }
-        return CLAUDE_MODEL_DISPLAY[newEntry.model as ClaudeModelAlias] || newEntry.model;
-      };
-
-      const isChanged =
-        currentEntry.model !== newEntry.model ||
-        currentEntry.providerId !== newEntry.providerId ||
-        currentEntry.thinkingLevel !== newEntry.thinkingLevel;
-
-      return {
-        phase,
-        label: PHASE_LABELS[phase],
-        claudeAlias,
-        currentDisplay: getCurrentDisplay(),
-        newDisplay: getNewDisplay(),
-        newEntry,
-        isChanged,
-      };
+      return generatePreviewItem(phase, PHASE_LABELS[phase], currentEntry);
     });
-  }, [phaseModels, selectedProviderConfig, enabledProviders]);
+
+    return [defaultFeaturePreview, ...phasePreview];
+  }, [phaseModels, selectedProviderConfig, enabledProviders, defaultFeatureModel]);
 
   // Count how many will change
   const changeCount = preview.filter((p) => p.isChanged).length;
 
   // Apply the bulk replace
   const handleApply = () => {
-    preview.forEach(({ phase, newEntry, isChanged }) => {
+    preview.forEach(({ key, newEntry, isChanged }) => {
       if (isChanged) {
-        setPhaseModel(phase, newEntry);
+        if (key === DEFAULT_FEATURE_MODEL_KEY) {
+          setDefaultFeatureModel(newEntry);
+        } else {
+          setPhaseModel(key as PhaseModelKey, newEntry);
+        }
       }
     });
     onOpenChange(false);
@@ -284,7 +323,7 @@ export function BulkReplaceDialog({ open, onOpenChange }: BulkReplaceDialogProps
               <div className="flex items-center justify-between">
                 <label className="text-sm font-medium">Preview Changes</label>
                 <span className="text-xs text-muted-foreground">
-                  {changeCount} of {ALL_PHASES.length} will change
+                  {changeCount} of {preview.length} will change
                 </span>
               </div>
               <div className="border rounded-lg overflow-hidden max-h-[300px] overflow-y-auto">
@@ -298,15 +337,23 @@ export function BulkReplaceDialog({ open, onOpenChange }: BulkReplaceDialogProps
                     </tr>
                   </thead>
                   <tbody>
-                    {preview.map(({ phase, label, currentDisplay, newDisplay, isChanged }) => (
+                    {preview.map(({ key, label, currentDisplay, newDisplay, isChanged }) => (
                       <tr
-                        key={phase}
+                        key={key}
                         className={cn(
                           'border-t border-border/50',
-                          isChanged ? 'bg-brand-500/5' : 'opacity-50'
+                          isChanged ? 'bg-brand-500/5' : 'opacity-50',
+                          key === DEFAULT_FEATURE_MODEL_KEY && 'bg-accent/30'
                         )}
                       >
-                        <td className="p-2 font-medium">{label}</td>
+                        <td className="p-2 font-medium">
+                          {label}
+                          {key === DEFAULT_FEATURE_MODEL_KEY && (
+                            <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-brand-500/20 text-brand-500">
+                              Feature Default
+                            </span>
+                          )}
+                        </td>
                         <td className="p-2 text-muted-foreground">{currentDisplay}</td>
                         <td className="p-2 text-center">
                           {isChanged ? (

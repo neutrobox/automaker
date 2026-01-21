@@ -13,7 +13,13 @@ import { Label } from '@/components/ui/label';
 import { AlertCircle } from 'lucide-react';
 import { modelSupportsThinking } from '@/lib/utils';
 import { Feature, ModelAlias, ThinkingLevel, PlanningMode } from '@/store/app-store';
-import { TestingTabContent, PrioritySelect, PlanningModeSelect, WorkModeSelector } from '../shared';
+import {
+  TestingTabContent,
+  PrioritySelect,
+  PlanningModeSelect,
+  WorkModeSelector,
+  PipelineExclusionControls,
+} from '../shared';
 import type { WorkMode } from '../shared';
 import { PhaseModelSelector } from '@/components/views/settings-view/model-defaults/phase-model-selector';
 import { isCursorModel, isClaudeModel, type PhaseModelEntry } from '@automaker/types';
@@ -28,6 +34,7 @@ interface MassEditDialogProps {
   branchSuggestions: string[];
   branchCardCounts?: Record<string, number>;
   currentBranch?: string;
+  projectPath?: string;
 }
 
 interface ApplyState {
@@ -38,11 +45,13 @@ interface ApplyState {
   priority: boolean;
   skipTests: boolean;
   branchName: boolean;
+  excludedPipelineSteps: boolean;
 }
 
 function getMixedValues(features: Feature[]): Record<string, boolean> {
   if (features.length === 0) return {};
   const first = features[0];
+  const firstExcludedSteps = JSON.stringify(first.excludedPipelineSteps || []);
   return {
     model: !features.every((f) => f.model === first.model),
     thinkingLevel: !features.every((f) => f.thinkingLevel === first.thinkingLevel),
@@ -53,6 +62,9 @@ function getMixedValues(features: Feature[]): Record<string, boolean> {
     priority: !features.every((f) => f.priority === first.priority),
     skipTests: !features.every((f) => f.skipTests === first.skipTests),
     branchName: !features.every((f) => f.branchName === first.branchName),
+    excludedPipelineSteps: !features.every(
+      (f) => JSON.stringify(f.excludedPipelineSteps || []) === firstExcludedSteps
+    ),
   };
 }
 
@@ -111,6 +123,7 @@ export function MassEditDialog({
   branchSuggestions,
   branchCardCounts,
   currentBranch,
+  projectPath,
 }: MassEditDialogProps) {
   const [isApplying, setIsApplying] = useState(false);
 
@@ -123,6 +136,7 @@ export function MassEditDialog({
     priority: false,
     skipTests: false,
     branchName: false,
+    excludedPipelineSteps: false,
   });
 
   // Field values
@@ -146,6 +160,11 @@ export function MassEditDialog({
     return getInitialValue(selectedFeatures, 'branchName', '') as string;
   });
 
+  // Pipeline exclusion state
+  const [excludedPipelineSteps, setExcludedPipelineSteps] = useState<string[]>(() => {
+    return getInitialValue(selectedFeatures, 'excludedPipelineSteps', []) as string[];
+  });
+
   // Calculate mixed values
   const mixedValues = useMemo(() => getMixedValues(selectedFeatures), [selectedFeatures]);
 
@@ -160,6 +179,7 @@ export function MassEditDialog({
         priority: false,
         skipTests: false,
         branchName: false,
+        excludedPipelineSteps: false,
       });
       setModel(getInitialValue(selectedFeatures, 'model', 'claude-sonnet') as ModelAlias);
       setThinkingLevel(getInitialValue(selectedFeatures, 'thinkingLevel', 'none') as ThinkingLevel);
@@ -172,6 +192,10 @@ export function MassEditDialog({
       const initialBranchName = getInitialValue(selectedFeatures, 'branchName', '') as string;
       setBranchName(initialBranchName);
       setWorkMode(initialBranchName ? 'custom' : 'current');
+      // Reset pipeline exclusions
+      setExcludedPipelineSteps(
+        getInitialValue(selectedFeatures, 'excludedPipelineSteps', []) as string[]
+      );
     }
   }, [open, selectedFeatures]);
 
@@ -189,6 +213,10 @@ export function MassEditDialog({
       // For 'auto' mode, use empty string (will be auto-generated)
       // For 'custom' mode, use the specified branch name
       updates.branchName = workMode === 'custom' ? branchName : '';
+    }
+    if (applyState.excludedPipelineSteps) {
+      updates.excludedPipelineSteps =
+        excludedPipelineSteps.length > 0 ? excludedPipelineSteps : undefined;
     }
 
     if (Object.keys(updates).length === 0) {
@@ -351,6 +379,23 @@ export function MassEditDialog({
               branchCardCounts={branchCardCounts}
               currentBranch={currentBranch}
               testIdPrefix="mass-edit-work-mode"
+            />
+          </FieldWrapper>
+
+          {/* Pipeline Exclusion */}
+          <FieldWrapper
+            label="Pipeline Steps"
+            isMixed={mixedValues.excludedPipelineSteps}
+            willApply={applyState.excludedPipelineSteps}
+            onApplyChange={(apply) =>
+              setApplyState((prev) => ({ ...prev, excludedPipelineSteps: apply }))
+            }
+          >
+            <PipelineExclusionControls
+              projectPath={projectPath}
+              excludedPipelineSteps={excludedPipelineSteps}
+              onExcludedStepsChange={setExcludedPipelineSteps}
+              testIdPrefix="mass-edit-pipeline"
             />
           </FieldWrapper>
         </div>

@@ -1489,6 +1489,7 @@ export function BoardView() {
         branchSuggestions={branchSuggestions}
         branchCardCounts={branchCardCounts}
         currentBranch={currentWorktreeBranch || undefined}
+        projectPath={currentProject?.path}
       />
 
       {/* Board Background Modal */}
@@ -1538,6 +1539,7 @@ export function BoardView() {
         isMaximized={isMaximized}
         parentFeature={spawnParentFeature}
         allFeatures={hookFeatures}
+        projectPath={currentProject?.path}
         // When setting is enabled and a non-main worktree is selected, pass its branch to default to 'custom' work mode
         selectedNonMainWorktreeBranch={
           addFeatureUseSelectedWorktreeBranch && currentWorktreePath !== null
@@ -1568,6 +1570,7 @@ export function BoardView() {
         currentBranch={currentWorktreeBranch || undefined}
         isMaximized={isMaximized}
         allFeatures={hookFeatures}
+        projectPath={currentProject?.path}
       />
 
       {/* Agent Output Modal */}

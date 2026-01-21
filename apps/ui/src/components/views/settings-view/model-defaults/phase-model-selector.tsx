@@ -522,6 +522,9 @@ export function PhaseModelSelector({
     return [...staticModels, ...uniqueDynamic];
   }, [dynamicOpencodeModels, enabledDynamicModelIds]);
 
+  // Check if providers are disabled (needed for rendering conditions)
+  const isCursorDisabled = disabledProviders.includes('cursor');
+
   // Group models (filtering out disabled providers)
   const { favorites, claude, cursor, codex, opencode } = useMemo(() => {
     const favs: typeof CLAUDE_MODELS = [];
@@ -531,7 +534,6 @@ export function PhaseModelSelector({
     const ocModels: ModelOption[] = [];
 
     const isClaudeDisabled = disabledProviders.includes('claude');
-    const isCursorDisabled = disabledProviders.includes('cursor');
     const isCodexDisabled = disabledProviders.includes('codex');
     const isOpencodeDisabled = disabledProviders.includes('opencode');
 
@@ -1900,7 +1902,7 @@ export function PhaseModelSelector({
             );
           })}
 
-          {(groupedModels.length > 0 || standaloneCursorModels.length > 0) && (
+          {!isCursorDisabled && (groupedModels.length > 0 || standaloneCursorModels.length > 0) && (
             <CommandGroup heading="Cursor Models">
               {/* Grouped models with secondary popover */}
               {groupedModels.map((group) => renderGroupedModelItem(group))}

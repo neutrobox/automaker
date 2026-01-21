@@ -713,6 +713,7 @@ export function hydrateStoreFromSettings(settings: GlobalSettings): void {
     muteDoneSound: settings.muteDoneSound ?? false,
     serverLogLevel: settings.serverLogLevel ?? 'info',
     enableRequestLogging: settings.enableRequestLogging ?? true,
+    showQueryDevtools: settings.showQueryDevtools ?? true,
     enhancementModel: settings.enhancementModel ?? 'claude-sonnet',
     validationModel: settings.validationModel ?? 'claude-opus',
     phaseModels: settings.phaseModels ?? current.phaseModels,

@@ -49,6 +49,7 @@ export interface Feature {
   // Branch info - worktree path is derived at runtime from branchName
   branchName?: string; // Name of the feature branch (undefined = use current worktree)
   skipTests?: boolean;
+  excludedPipelineSteps?: string[]; // Array of pipeline step IDs to skip for this feature
   thinkingLevel?: ThinkingLevel;
   reasoningEffort?: ReasoningEffort;
   planningMode?: PlanningMode;

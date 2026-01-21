@@ -42,6 +42,7 @@ import {
   DEFAULT_PHASE_MODELS,
   DEFAULT_OPENCODE_MODEL,
   DEFAULT_MAX_CONCURRENCY,
+  DEFAULT_GLOBAL_SETTINGS,
 } from '@automaker/types';
 
 const logger = createLogger('AppStore');
@@ -505,6 +506,7 @@ export interface ProjectAnalysis {
 // Terminal panel layout types (recursive for splits)
 export type TerminalPanelContent =
   | { type: 'terminal'; sessionId: string; size?: number; fontSize?: number; branchName?: string }
+  | { type: 'testRunner'; sessionId: string; size?: number; worktreePath: string }
   | {
       type: 'split';
       id: string; // Stable ID for React key stability
@@ -542,6 +544,7 @@ export interface TerminalState {
 // Used to restore terminal layout structure when switching projects
 export type PersistedTerminalPanel =
   | { type: 'terminal'; size?: number; fontSize?: number; sessionId?: string; branchName?: string }
+  | { type: 'testRunner'; size?: number; sessionId?: string; worktreePath?: string }
   | {
       type: 'split';
       id?: string; // Optional for backwards compatibility with older persisted layouts
@@ -680,6 +683,9 @@ export interface AppState {
   // Server Log Level Settings
   serverLogLevel: ServerLogLevel; // Log level for the API server (error, warn, info, debug)
   enableRequestLogging: boolean; // Enable HTTP request logging (Morgan)
+
+  // Developer Tools Settings
+  showQueryDevtools: boolean; // Show React Query DevTools panel (only in development mode)
 
   // Enhancement Model Settings
   enhancementModel: ModelAlias; // Model used for feature enhancement (default: sonnet)
@@ -1055,6 +1061,12 @@ export interface AppActions {
   ) => void;
   clearAllProjectPhaseModelOverrides: (projectId: string) => void;
 
+  // Project Default Feature Model Override
+  setProjectDefaultFeatureModel: (
+    projectId: string,
+    entry: import('@automaker/types').PhaseModelEntry | null // null = use global
+  ) => void;
+
   // Feature actions
   setFeatures: (features: Feature[]) => void;
   updateFeature: (id: string, updates: Partial<Feature>) => void;
@@ -1160,6 +1172,9 @@ export interface AppActions {
   // Server Log Level actions
   setServerLogLevel: (level: ServerLogLevel) => void;
   setEnableRequestLogging: (enabled: boolean) => void;
+
+  // Developer Tools actions
+  setShowQueryDevtools: (show: boolean) => void;
 
   // Enhancement Model actions
   setEnhancementModel: (model: ModelAlias) => void;
@@ -1465,6 +1480,7 @@ const initialState: AppState = {
   muteDoneSound: false, // Default to sound enabled (not muted)
   serverLogLevel: 'info', // Default to info level for server logs
   enableRequestLogging: true, // Default to enabled for HTTP request logging
+  showQueryDevtools: true, // Default to enabled (only shown in dev mode anyway)
   enhancementModel: 'claude-sonnet', // Default to sonnet for feature enhancement
   validationModel: 'claude-opus', // Default to opus for GitHub issue validation
   phaseModels: DEFAULT_PHASE_MODELS, // Phase-specific model configuration
@@ -1527,7 +1543,7 @@ const initialState: AppState = {
   specCreatingForProject: null,
   defaultPlanningMode: 'skip' as PlanningMode,
   defaultRequirePlanApproval: false,
-  defaultFeatureModel: { model: 'opus' } as PhaseModelEntry,
+  defaultFeatureModel: DEFAULT_GLOBAL_SETTINGS.defaultFeatureModel,
   pendingPlanApproval: null,
   claudeRefreshInterval: 60,
   claudeUsage: null,
@@ -2105,9 +2121,11 @@ export const useAppStore = create<AppState & AppActions>()((set, get) => ({
       return;
     }
 
-    // Clear overrides from project
+    // Clear all model overrides from project (phaseModelOverrides + defaultFeatureModel)
     const projects = get().projects.map((p) =>
-      p.id === projectId ? { ...p, phaseModelOverrides: undefined } : p
+      p.id === projectId
+        ? { ...p, phaseModelOverrides: undefined, defaultFeatureModel: undefined }
+        : p
     );
     set({ projects });
 
@@ -2118,6 +2136,49 @@ export const useAppStore = create<AppState & AppActions>()((set, get) => ({
         currentProject: {
           ...currentProject,
           phaseModelOverrides: undefined,
+          defaultFeatureModel: undefined,
+        },
+      });
+    }
+
+    // Persist to server (clear both)
+    const httpClient = getHttpApiClient();
+    httpClient.settings
+      .updateProject(project.path, {
+        phaseModelOverrides: '__CLEAR__',
+        defaultFeatureModel: '__CLEAR__',
+      })
+      .catch((error) => {
+        console.error('Failed to clear model overrides:', error);
+      });
+  },
+
+  setProjectDefaultFeatureModel: (projectId, entry) => {
+    // Find the project to get its path for server sync
+    const project = get().projects.find((p) => p.id === projectId);
+    if (!project) {
+      console.error('Cannot set default feature model: project not found');
+      return;
+    }
+
+    // Update the project's defaultFeatureModel
+    const projects = get().projects.map((p) =>
+      p.id === projectId
+        ? {
+            ...p,
+            defaultFeatureModel: entry ?? undefined,
+          }
+        : p
+    );
+    set({ projects });
+
+    // Also update currentProject if it's the same project
+    const currentProject = get().currentProject;
+    if (currentProject?.id === projectId) {
+      set({
+        currentProject: {
+          ...currentProject,
+          defaultFeatureModel: entry ?? undefined,
         },
       });
     }
@@ -2126,10 +2187,10 @@ export const useAppStore = create<AppState & AppActions>()((set, get) => ({
     const httpClient = getHttpApiClient();
     httpClient.settings
       .updateProject(project.path, {
-        phaseModelOverrides: '__CLEAR__',
+        defaultFeatureModel: entry ?? '__CLEAR__',
       })
       .catch((error) => {
-        console.error('Failed to clear phaseModelOverrides:', error);
+        console.error('Failed to persist defaultFeatureModel:', error);
       });
   },
 
@@ -2541,6 +2602,9 @@ export const useAppStore = create<AppState & AppActions>()((set, get) => ({
   setServerLogLevel: (level) => set({ serverLogLevel: level }),
   setEnableRequestLogging: (enabled) => set({ enableRequestLogging: enabled }),
 
+  // Developer Tools actions
+  setShowQueryDevtools: (show) => set({ showQueryDevtools: show }),
+
   // Enhancement Model actions
   setEnhancementModel: (model) => set({ enhancementModel: model }),
 
@@ -2571,7 +2635,10 @@ export const useAppStore = create<AppState & AppActions>()((set, get) => ({
     await syncSettingsToServer();
   },
   resetPhaseModels: async () => {
-    set({ phaseModels: DEFAULT_PHASE_MODELS });
+    set({
+      phaseModels: DEFAULT_PHASE_MODELS,
+      defaultFeatureModel: DEFAULT_GLOBAL_SETTINGS.defaultFeatureModel,
+    });
     // Sync to server settings file
     const { syncSettingsToServer } = await import('@/hooks/use-settings-migration');
     await syncSettingsToServer();
@@ -3106,7 +3173,7 @@ export const useAppStore = create<AppState & AppActions>()((set, get) => ({
       targetId: string,
       targetDirection: 'horizontal' | 'vertical'
     ): TerminalPanelContent => {
-      if (node.type === 'terminal') {
+      if (node.type === 'terminal' || node.type === 'testRunner') {
         if (node.sessionId === targetId) {
           // Found the target - split it
           return {
@@ -3131,7 +3198,7 @@ export const useAppStore = create<AppState & AppActions>()((set, get) => ({
       node: TerminalPanelContent,
       targetDirection: 'horizontal' | 'vertical'
     ): TerminalPanelContent => {
-      if (node.type === 'terminal') {
+      if (node.type === 'terminal' || node.type === 'testRunner') {
         return {
           type: 'split',
           id: generateSplitId(),
@@ -3139,7 +3206,7 @@ export const useAppStore = create<AppState & AppActions>()((set, get) => ({
           panels: [{ ...node, size: 50 }, newTerminal],
         };
       }
-      // If same direction, add to existing split
+      // It's a split - if same direction, add to existing split
       if (node.direction === targetDirection) {
         const newSize = 100 / (node.panels.length + 1);
         return {
@@ -3188,7 +3255,7 @@ export const useAppStore = create<AppState & AppActions>()((set, get) => ({
     // Find which tab contains this session
     const findFirstTerminal = (node: TerminalPanelContent | null): string | null => {
       if (!node) return null;
-      if (node.type === 'terminal') return node.sessionId;
+      if (node.type === 'terminal' || node.type === 'testRunner') return node.sessionId;
       for (const panel of node.panels) {
         const found = findFirstTerminal(panel);
         if (found) return found;
@@ -3197,7 +3264,7 @@ export const useAppStore = create<AppState & AppActions>()((set, get) => ({
     };
 
     const removeAndCollapse = (node: TerminalPanelContent): TerminalPanelContent | null => {
-      if (node.type === 'terminal') {
+      if (node.type === 'terminal' || node.type === 'testRunner') {
         return node.sessionId === sessionId ? null : node;
       }
       const newPanels: TerminalPanelContent[] = [];
@@ -3256,6 +3323,10 @@ export const useAppStore = create<AppState & AppActions>()((set, get) => ({
         if (node.sessionId === sessionId2) return { ...node, sessionId: sessionId1 };
         return node;
       }
+      if (node.type === 'testRunner') {
+        // testRunner panels don't participate in swapping
+        return node;
+      }
       return { ...node, panels: node.panels.map(swapInLayout) };
     };
 
@@ -3306,6 +3377,10 @@ export const useAppStore = create<AppState & AppActions>()((set, get) => ({
         if (node.sessionId === sessionId) {
           return { ...node, fontSize: clampedSize };
         }
+        return node;
+      }
+      if (node.type === 'testRunner') {
+        // testRunner panels don't have fontSize
         return node;
       }
       return { ...node, panels: node.panels.map(updateFontSize) };
@@ -3421,7 +3496,7 @@ export const useAppStore = create<AppState & AppActions>()((set, get) => ({
       if (newActiveTabId) {
         const newActiveTab = newTabs.find((t) => t.id === newActiveTabId);
         const findFirst = (node: TerminalPanelContent): string | null => {
-          if (node.type === 'terminal') return node.sessionId;
+          if (node.type === 'terminal' || node.type === 'testRunner') return node.sessionId;
           for (const p of node.panels) {
             const f = findFirst(p);
             if (f) return f;
@@ -3452,7 +3527,7 @@ export const useAppStore = create<AppState & AppActions>()((set, get) => ({
     let newActiveSessionId = current.activeSessionId;
     if (tab.layout) {
       const findFirst = (node: TerminalPanelContent): string | null => {
-        if (node.type === 'terminal') return node.sessionId;
+        if (node.type === 'terminal' || node.type === 'testRunner') return node.sessionId;
         for (const p of node.panels) {
           const f = findFirst(p);
           if (f) return f;
@@ -3513,6 +3588,10 @@ export const useAppStore = create<AppState & AppActions>()((set, get) => ({
       if (node.type === 'terminal') {
         return node.sessionId === sessionId ? node : null;
       }
+      if (node.type === 'testRunner') {
+        // testRunner panels don't participate in moveTerminalToTab
+        return null;
+      }
       for (const panel of node.panels) {
         const found = findTerminal(panel);
         if (found) return found;
@@ -3537,7 +3616,7 @@ export const useAppStore = create<AppState & AppActions>()((set, get) => ({
     if (!sourceTab?.layout) return;
 
     const removeAndCollapse = (node: TerminalPanelContent): TerminalPanelContent | null => {
-      if (node.type === 'terminal') {
+      if (node.type === 'terminal' || node.type === 'testRunner') {
         return node.sessionId === sessionId ? null : node;
       }
       const newPanels: TerminalPanelContent[] = [];
@@ -3598,7 +3677,7 @@ export const useAppStore = create<AppState & AppActions>()((set, get) => ({
           size: 100,
           fontSize: originalTerminalNode.fontSize,
         };
-      } else if (targetTab.layout.type === 'terminal') {
+      } else if (targetTab.layout.type === 'terminal' || targetTab.layout.type === 'testRunner') {
         newTargetLayout = {
           type: 'split',
           id: generateSplitId(),
@@ -3606,6 +3685,7 @@ export const useAppStore = create<AppState & AppActions>()((set, get) => ({
           panels: [{ ...targetTab.layout, size: 50 }, terminalNode],
         };
       } else {
+        // It's a split
         newTargetLayout = {
           ...targetTab.layout,
           panels: [...targetTab.layout.panels, terminalNode],
@@ -3648,7 +3728,7 @@ export const useAppStore = create<AppState & AppActions>()((set, get) => ({
 
     if (!tab.layout) {
       newLayout = { type: 'terminal', sessionId, size: 100, branchName };
-    } else if (tab.layout.type === 'terminal') {
+    } else if (tab.layout.type === 'terminal' || tab.layout.type === 'testRunner') {
       newLayout = {
         type: 'split',
         id: generateSplitId(),
@@ -3656,6 +3736,7 @@ export const useAppStore = create<AppState & AppActions>()((set, get) => ({
         panels: [{ ...tab.layout, size: 50 }, terminalNode],
       };
     } else {
+      // It's a split
       if (tab.layout.direction === direction) {
         const newSize = 100 / (tab.layout.panels.length + 1);
         newLayout = {
@@ -3696,7 +3777,7 @@ export const useAppStore = create<AppState & AppActions>()((set, get) => ({
 
     // Find first terminal in layout if no activeSessionId provided
     const findFirst = (node: TerminalPanelContent): string | null => {
-      if (node.type === 'terminal') return node.sessionId;
+      if (node.type === 'terminal' || node.type === 'testRunner') return node.sessionId;
       for (const p of node.panels) {
         const found = findFirst(p);
         if (found) return found;
@@ -3729,7 +3810,7 @@ export const useAppStore = create<AppState & AppActions>()((set, get) => ({
 
     // Helper to generate panel key (matches getPanelKey in terminal-view.tsx)
     const getPanelKey = (panel: TerminalPanelContent): string => {
-      if (panel.type === 'terminal') return panel.sessionId;
+      if (panel.type === 'terminal' || panel.type === 'testRunner') return panel.sessionId;
       const childKeys = panel.panels.map(getPanelKey).join('-');
       return `split-${panel.direction}-${childKeys}`;
     };
@@ -3739,7 +3820,7 @@ export const useAppStore = create<AppState & AppActions>()((set, get) => ({
       const key = getPanelKey(panel);
       const newSize = sizeMap.get(key);
 
-      if (panel.type === 'terminal') {
+      if (panel.type === 'terminal' || panel.type === 'testRunner') {
         return newSize !== undefined ? { ...panel, size: newSize } : panel;
       }
 
@@ -3780,6 +3861,14 @@ export const useAppStore = create<AppState & AppActions>()((set, get) => ({
           fontSize: panel.fontSize,
           sessionId: panel.sessionId, // Preserve for reconnection
           branchName: panel.branchName, // Preserve branch name for display
+        };
+      }
+      if (panel.type === 'testRunner') {
+        return {
+          type: 'testRunner',
+          size: panel.size,
+          sessionId: panel.sessionId, // Preserve for reconnection
+          worktreePath: panel.worktreePath, // Preserve worktree context
         };
       }
       return {

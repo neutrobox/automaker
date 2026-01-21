@@ -39,9 +39,13 @@ import { ProviderFactory } from '../providers/provider-factory.js';
 import type { SettingsService } from './settings-service.js';
 import type { FeatureLoader } from './feature-loader.js';
 import { createChatOptions, validateWorkingDirectory } from '../lib/sdk-options.js';
-import { resolveModelString } from '@automaker/model-resolver';
+import { resolveModelString, resolvePhaseModel } from '@automaker/model-resolver';
 import { stripProviderPrefix } from '@automaker/types';
-import { getPromptCustomization, getProviderByModelId } from '../lib/settings-helpers.js';
+import {
+  getPromptCustomization,
+  getProviderByModelId,
+  getPhaseModelWithOverrides,
+} from '../lib/settings-helpers.js';
 
 const logger = createLogger('IdeationService');
 
@@ -684,8 +688,24 @@ export class IdeationService {
         existingWorkContext
       );
 
-      // Resolve model alias to canonical identifier (with prefix)
-      const modelId = resolveModelString('sonnet');
+      // Get model from phase settings with provider info (suggestionsModel)
+      const phaseResult = await getPhaseModelWithOverrides(
+        'suggestionsModel',
+        this.settingsService,
+        projectPath,
+        '[IdeationService]'
+      );
+      const resolved = resolvePhaseModel(phaseResult.phaseModel);
+      // resolvePhaseModel already resolves model aliases internally - no need to call resolveModelString again
+      const modelId = resolved.model;
+      const claudeCompatibleProvider = phaseResult.provider;
+      const credentials = phaseResult.credentials;
+
+      logger.info(
+        'generateSuggestions using model:',
+        modelId,
+        claudeCompatibleProvider ? `via provider: ${claudeCompatibleProvider.name}` : 'direct API'
+      );
 
       // Create SDK options
       const sdkOptions = createChatOptions({
@@ -700,9 +720,6 @@ export class IdeationService {
       // Strip provider prefix - providers need bare model IDs
       const bareModel = stripProviderPrefix(modelId);
 
-      // Get credentials for API calls (uses hardcoded model, no phase setting)
-      const credentials = await this.settingsService?.getCredentials();
-
       const executeOptions: ExecuteOptions = {
         prompt: prompt.prompt,
         model: bareModel,
@@ -713,6 +730,7 @@ export class IdeationService {
         // Disable all tools - we just want text generation, not codebase analysis
         allowedTools: [],
         abortController: new AbortController(),
+        claudeCompatibleProvider, // Pass provider for alternative endpoint configuration
         credentials, // Pass credentials for resolving 'credentials' apiKeySource
       };
 

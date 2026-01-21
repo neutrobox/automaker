@@ -16,6 +16,16 @@ export type {
   ProviderMessage,
   InstallationStatus,
   ModelDefinition,
+  AgentDefinition,
+  ReasoningEffort,
+  SystemPromptPreset,
+  ConversationMessage,
+  ContentBlock,
+  ValidationResult,
+  McpServerConfig,
+  McpStdioServerConfig,
+  McpSSEServerConfig,
+  McpHttpServerConfig,
 } from './types.js';
 
 // Claude provider

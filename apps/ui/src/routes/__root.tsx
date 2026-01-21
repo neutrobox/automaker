@@ -40,7 +40,7 @@ import { useIsCompact } from '@/hooks/use-media-query';
 import type { Project } from '@/lib/electron';
 
 const logger = createLogger('RootLayout');
-const SHOW_QUERY_DEVTOOLS = import.meta.env.DEV;
+const IS_DEV = import.meta.env.DEV;
 const SERVER_READY_MAX_ATTEMPTS = 8;
 const SERVER_READY_BACKOFF_BASE_MS = 250;
 const SERVER_READY_MAX_DELAY_MS = 1500;
@@ -895,17 +895,22 @@ function RootLayoutContent() {
 }
 
 function RootLayout() {
-  // Hide devtools on compact screens (mobile/tablet) to avoid overlap with sidebar settings
+  // Hide devtools on compact screens (mobile/tablet) to avoid overlap with UI controls
   const isCompact = useIsCompact();
+  // Get the user's preference for showing devtools from the app store
+  const showQueryDevtools = useAppStore((state) => state.showQueryDevtools);
+
+  // Show devtools only if: in dev mode, user setting enabled, and not compact screen
+  const shouldShowDevtools = IS_DEV && showQueryDevtools && !isCompact;
 
   return (
     <QueryClientProvider client={queryClient}>
       <FileBrowserProvider>
         <RootLayoutContent />
       </FileBrowserProvider>
-      {SHOW_QUERY_DEVTOOLS && !isCompact ? (
-        <ReactQueryDevtools initialIsOpen={false} buttonPosition="bottom-left" />
-      ) : null}
+      {shouldShowDevtools && (
+        <ReactQueryDevtools initialIsOpen={false} buttonPosition="bottom-right" />
+      )}
     </QueryClientProvider>
   );
 }

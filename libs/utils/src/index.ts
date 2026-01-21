@@ -105,3 +105,12 @@ export {
   type LearningEntry,
   type SimpleMemoryFile,
 } from './memory-loader.js';
+
+// Debounce and throttle utilities
+export {
+  debounce,
+  throttle,
+  type DebounceOptions,
+  type ThrottleOptions,
+  type DebouncedFunction,
+} from './debounce.js';

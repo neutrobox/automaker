@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { useRef, useState, useEffect } from 'react';
+import { generateUUID } from '@/lib/utils';
 
 interface ArrayFieldEditorProps {
   values: string[];
@@ -17,10 +18,6 @@ interface ItemWithId {
   value: string;
 }
 
-function generateId(): string {
-  return crypto.randomUUID();
-}
-
 export function ArrayFieldEditor({
   values,
   onChange,
@@ -30,7 +27,7 @@ export function ArrayFieldEditor({
 }: ArrayFieldEditorProps) {
   // Track items with stable IDs
   const [items, setItems] = useState<ItemWithId[]>(() =>
-    values.map((value) => ({ id: generateId(), value }))
+    values.map((value) => ({ id: generateUUID(), value }))
   );
 
   // Track if we're making an internal change to avoid sync loops
@@ -44,11 +41,11 @@ export function ArrayFieldEditor({
     }
 
     // External change - rebuild items with new IDs
-    setItems(values.map((value) => ({ id: generateId(), value })));
+    setItems(values.map((value) => ({ id: generateUUID(), value })));
   }, [values]);
 
   const handleAdd = () => {
-    const newItems = [...items, { id: generateId(), value: '' }];
+    const newItems = [...items, { id: generateUUID(), value: '' }];
     setItems(newItems);
     isInternalChange.current = true;
     onChange(newItems.map((item) => item.value));

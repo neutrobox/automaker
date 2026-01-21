@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import type { SpecOutput } from '@automaker/spec-parser';
+import { generateUUID } from '@/lib/utils';
 
 type RoadmapPhase = NonNullable<SpecOutput['implementation_roadmap']>[number];
 type PhaseStatus = 'completed' | 'in_progress' | 'pending';
@@ -21,12 +22,8 @@ interface PhaseWithId extends RoadmapPhase {
   _id: string;
 }
 
-function generateId(): string {
-  return crypto.randomUUID();
-}
-
 function phaseToInternal(phase: RoadmapPhase): PhaseWithId {
-  return { ...phase, _id: generateId() };
+  return { ...phase, _id: generateUUID() };
 }
 
 function internalToPhase(internal: PhaseWithId): RoadmapPhase {

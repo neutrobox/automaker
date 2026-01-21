@@ -236,7 +236,7 @@ export const KanbanCard = memo(function KanbanCard({
       </div>
 
       {/* Priority and Manual Verification badges */}
-      <PriorityBadges feature={feature} />
+      <PriorityBadges feature={feature} projectPath={currentProject?.path} />
 
       {/* Card Header */}
       <CardHeaderSection

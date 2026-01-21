@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { Workflow, RotateCcw, Replace } from 'lucide-react';
+import { Workflow, RotateCcw, Replace, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAppStore } from '@/store/app-store';
 import { Button } from '@/components/ui/button';
 import { PhaseModelSelector } from './phase-model-selector';
 import { BulkReplaceDialog } from './bulk-replace-dialog';
-import type { PhaseModelKey } from '@automaker/types';
-import { DEFAULT_PHASE_MODELS } from '@automaker/types';
+import type { PhaseModelKey, PhaseModelEntry } from '@automaker/types';
+import { DEFAULT_PHASE_MODELS, DEFAULT_GLOBAL_SETTINGS } from '@automaker/types';
 
 interface PhaseConfig {
   key: PhaseModelKey;
@@ -113,6 +113,54 @@ function PhaseGroup({
   );
 }
 
+/**
+ * Default model for new feature cards section.
+ * This is separate from phase models but logically belongs with model configuration.
+ */
+function FeatureDefaultModelSection() {
+  const { defaultFeatureModel, setDefaultFeatureModel } = useAppStore();
+  const defaultValue: PhaseModelEntry =
+    defaultFeatureModel ?? DEFAULT_GLOBAL_SETTINGS.defaultFeatureModel;
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h3 className="text-sm font-medium text-foreground">Feature Defaults</h3>
+        <p className="text-xs text-muted-foreground">
+          Default model for new feature cards when created
+        </p>
+      </div>
+      <div className="space-y-3">
+        <div
+          className={cn(
+            'flex items-center justify-between p-4 rounded-xl',
+            'bg-accent/20 border border-border/30',
+            'hover:bg-accent/30 transition-colors'
+          )}
+        >
+          <div className="flex items-center gap-3 flex-1 pr-4">
+            <div className="w-8 h-8 rounded-lg bg-brand-500/10 flex items-center justify-center">
+              <Sparkles className="w-4 h-4 text-brand-500" />
+            </div>
+            <div>
+              <h4 className="text-sm font-medium text-foreground">Default Feature Model</h4>
+              <p className="text-xs text-muted-foreground">
+                Model and thinking level used when creating new feature cards
+              </p>
+            </div>
+          </div>
+          <PhaseModelSelector
+            compact
+            value={defaultValue}
+            onChange={setDefaultFeatureModel}
+            align="end"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function ModelDefaultsSection() {
   const { resetPhaseModels, claudeCompatibleProviders } = useAppStore();
   const [showBulkReplace, setShowBulkReplace] = useState(false);
@@ -171,6 +219,9 @@ export function ModelDefaultsSection() {
 
       {/* Content */}
       <div className="p-6 space-y-8">
+        {/* Feature Defaults */}
+        <FeatureDefaultModelSection />
+
         {/* Quick Tasks */}
         <PhaseGroup
           title="Quick Tasks"

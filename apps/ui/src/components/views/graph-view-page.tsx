@@ -392,6 +392,7 @@ export function GraphViewPage() {
         currentBranch={currentWorktreeBranch || undefined}
         isMaximized={false}
         allFeatures={hookFeatures}
+        projectPath={currentProject?.path}
       />
 
       {/* Add Feature Dialog (for spawning) */}
@@ -414,6 +415,7 @@ export function GraphViewPage() {
         isMaximized={false}
         parentFeature={spawnParentFeature}
         allFeatures={hookFeatures}
+        projectPath={currentProject?.path}
         // When setting is enabled and a non-main worktree is selected, pass its branch to default to 'custom' work mode
         selectedNonMainWorktreeBranch={
           addFeatureUseSelectedWorktreeBranch && currentWorktreePath !== null

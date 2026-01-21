@@ -62,7 +62,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: macos-builds
-          path: apps/ui/release/*.{dmg,zip}
+          path: |
+            apps/ui/release/*.dmg
+            apps/ui/release/*.zip
           retention-days: 30
 
       - name: Upload Windows artifacts
@@ -78,7 +80,10 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: linux-builds
-          path: apps/ui/release/*.{AppImage,deb,rpm}
+          path: |
+            apps/ui/release/*.AppImage
+            apps/ui/release/*.deb
+            apps/ui/release/*.rpm
           retention-days: 30
 
   upload:
@@ -109,8 +114,14 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            artifacts/macos-builds/*.{dmg,zip,blockmap}
-            artifacts/windows-builds/*.{exe,blockmap}
-            artifacts/linux-builds/*.{AppImage,deb,rpm,blockmap}
+            artifacts/macos-builds/*.dmg
+            artifacts/macos-builds/*.zip
+            artifacts/macos-builds/*.blockmap
+            artifacts/windows-builds/*.exe
+            artifacts/windows-builds/*.blockmap
+            artifacts/linux-builds/*.AppImage
+            artifacts/linux-builds/*.deb
+            artifacts/linux-builds/*.rpm
+            artifacts/linux-builds/*.blockmap
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

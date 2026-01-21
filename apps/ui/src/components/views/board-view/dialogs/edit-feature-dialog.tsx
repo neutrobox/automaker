@@ -36,6 +36,7 @@ import {
   PlanningModeSelect,
   EnhanceWithAI,
   EnhancementHistoryButton,
+  PipelineExclusionControls,
   type EnhancementMode,
 } from '../shared';
 import type { WorkMode } from '../shared';
@@ -67,6 +68,7 @@ interface EditFeatureDialogProps {
       requirePlanApproval: boolean;
       dependencies?: string[];
       childDependencies?: string[]; // Feature IDs that should depend on this feature
+      excludedPipelineSteps?: string[]; // Pipeline step IDs to skip for this feature
     },
     descriptionHistorySource?: 'enhance' | 'edit',
     enhancementMode?: EnhancementMode,
@@ -78,6 +80,7 @@ interface EditFeatureDialogProps {
   currentBranch?: string;
   isMaximized: boolean;
   allFeatures: Feature[];
+  projectPath?: string;
 }
 
 export function EditFeatureDialog({
@@ -90,6 +93,7 @@ export function EditFeatureDialog({
   currentBranch,
   isMaximized,
   allFeatures,
+  projectPath,
 }: EditFeatureDialogProps) {
   const navigate = useNavigate();
   const [editingFeature, setEditingFeature] = useState<Feature | null>(feature);
@@ -146,6 +150,11 @@ export function EditFeatureDialog({
     return allFeatures.filter((f) => f.dependencies?.includes(feature.id)).map((f) => f.id);
   });
 
+  // Pipeline exclusion state
+  const [excludedPipelineSteps, setExcludedPipelineSteps] = useState<string[]>(
+    feature?.excludedPipelineSteps ?? []
+  );
+
   useEffect(() => {
     setEditingFeature(feature);
     if (feature) {
@@ -171,6 +180,8 @@ export function EditFeatureDialog({
         .map((f) => f.id);
       setChildDependencies(childDeps);
       setOriginalChildDependencies(childDeps);
+      // Reset pipeline exclusion state
+      setExcludedPipelineSteps(feature.excludedPipelineSteps ?? []);
     } else {
       setEditFeaturePreviewMap(new Map());
       setDescriptionChangeSource(null);
@@ -179,6 +190,7 @@ export function EditFeatureDialog({
       setParentDependencies([]);
       setChildDependencies([]);
       setOriginalChildDependencies([]);
+      setExcludedPipelineSteps([]);
     }
   }, [feature, allFeatures]);
 
@@ -232,6 +244,7 @@ export function EditFeatureDialog({
       workMode,
       dependencies: parentDependencies,
       childDependencies: childDepsChanged ? childDependencies : undefined,
+      excludedPipelineSteps: excludedPipelineSteps.length > 0 ? excludedPipelineSteps : undefined,
     };
 
     // Determine if description changed and what source to use
@@ -618,6 +631,16 @@ export function EditFeatureDialog({
                 </div>
               </div>
             )}
+
+            {/* Pipeline Exclusion Controls */}
+            <div className="pt-2">
+              <PipelineExclusionControls
+                projectPath={projectPath}
+                excludedPipelineSteps={excludedPipelineSteps}
+                onExcludedStepsChange={setExcludedPipelineSteps}
+                testIdPrefix="edit-feature-pipeline"
+              />
+            </div>
           </div>
         </div>
 

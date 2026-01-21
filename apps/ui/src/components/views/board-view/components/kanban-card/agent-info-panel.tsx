@@ -1,4 +1,4 @@
-import { memo, useEffect, useState, useMemo } from 'react';
+import { memo, useEffect, useState, useMemo, useRef } from 'react';
 import { Feature, ThinkingLevel, ParsedTask } from '@/store/app-store';
 import type { ReasoningEffort } from '@automaker/types';
 import { getProviderFromModel } from '@/lib/utils';
@@ -69,21 +69,70 @@ export const AgentInfoPanel = memo(function AgentInfoPanel({
   const [taskStatusMap, setTaskStatusMap] = useState<
     Map<string, 'pending' | 'in_progress' | 'completed'>
   >(new Map());
+  // Track last WebSocket event timestamp to know if we're receiving real-time updates
+  const [lastWsEventTimestamp, setLastWsEventTimestamp] = useState<number | null>(null);
 
   // Determine if we should poll for updates
-  const shouldPoll = isCurrentAutoTask || feature.status === 'in_progress';
   const shouldFetchData = feature.status !== 'backlog';
+
+  // Track whether we're receiving WebSocket events (within threshold)
+  // Use a state to trigger re-renders when the WebSocket connection becomes stale
+  const [isReceivingWsEvents, setIsReceivingWsEvents] = useState(false);
+  const wsEventTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // WebSocket activity threshold in ms - if no events within this time, consider WS inactive
+  const WS_ACTIVITY_THRESHOLD = 10000;
+
+  // Update isReceivingWsEvents when we get new WebSocket events
+  useEffect(() => {
+    if (lastWsEventTimestamp !== null) {
+      // We just received an event, mark as active
+      setIsReceivingWsEvents(true);
+
+      // Clear any existing timeout
+      if (wsEventTimeoutRef.current) {
+        clearTimeout(wsEventTimeoutRef.current);
+      }
+
+      // Set a timeout to mark as inactive if no new events
+      wsEventTimeoutRef.current = setTimeout(() => {
+        setIsReceivingWsEvents(false);
+      }, WS_ACTIVITY_THRESHOLD);
+    }
+
+    return () => {
+      if (wsEventTimeoutRef.current) {
+        clearTimeout(wsEventTimeoutRef.current);
+      }
+    };
+  }, [lastWsEventTimestamp]);
+
+  // Polling interval logic:
+  // - If receiving WebSocket events: use longer interval (10s) as a fallback
+  // - If not receiving WebSocket events but in_progress: use normal interval (3s)
+  // - Otherwise: no polling
+  const pollingInterval = useMemo((): number | false => {
+    if (!(isCurrentAutoTask || feature.status === 'in_progress')) {
+      return false;
+    }
+    // If receiving WebSocket events, use longer polling interval as fallback
+    if (isReceivingWsEvents) {
+      return WS_ACTIVITY_THRESHOLD;
+    }
+    // Default polling interval
+    return 3000;
+  }, [isCurrentAutoTask, feature.status, isReceivingWsEvents]);
 
   // Fetch fresh feature data for planSpec (store data can be stale for task progress)
   const { data: freshFeature } = useFeature(projectPath, feature.id, {
     enabled: shouldFetchData && !contextContent,
-    pollingInterval: shouldPoll ? 3000 : false,
+    pollingInterval,
   });
 
   // Fetch agent output for parsing
   const { data: agentOutputContent } = useAgentOutput(projectPath, feature.id, {
     enabled: shouldFetchData && !contextContent,
-    pollingInterval: shouldPoll ? 3000 : false,
+    pollingInterval,
   });
 
   // Parse agent output into agentInfo
@@ -173,6 +222,9 @@ export const AgentInfoPanel = memo(function AgentInfoPanel({
     const unsubscribe = api.autoMode.onEvent((event: AutoModeEvent) => {
       // Only handle events for this feature
       if (!('featureId' in event) || event.featureId !== feature.id) return;
+
+      // Update timestamp for any event related to this feature
+      setLastWsEventTimestamp(Date.now());
 
       switch (event.type) {
         case 'auto_mode_task_started':

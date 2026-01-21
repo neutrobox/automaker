@@ -827,6 +827,16 @@ export class SettingsService {
       delete updated.phaseModelOverrides;
     }
 
+    // Handle defaultFeatureModel special cases:
+    // - "__CLEAR__" marker means delete the key (use global setting)
+    // - object means project-specific override
+    if (
+      'defaultFeatureModel' in updates &&
+      (updates as Record<string, unknown>).defaultFeatureModel === '__CLEAR__'
+    ) {
+      delete updated.defaultFeatureModel;
+    }
+
     await writeSettingsJson(settingsPath, updated);
     logger.info(`Project settings updated for ${projectPath}`);
 
