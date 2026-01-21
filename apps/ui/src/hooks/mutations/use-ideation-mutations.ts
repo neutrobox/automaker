@@ -8,7 +8,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { getElectronAPI } from '@/lib/electron';
 import { queryKeys } from '@/lib/query-keys';
 import { toast } from 'sonner';
-import type { IdeaCategory, IdeaSuggestion } from '@automaker/types';
+import type { IdeaCategory, AnalysisSuggestion } from '@automaker/types';
+import { useIdeationStore } from '@/store/ideation-store';
 
 /**
  * Input for generating ideation suggestions
@@ -16,15 +17,23 @@ import type { IdeaCategory, IdeaSuggestion } from '@automaker/types';
 interface GenerateSuggestionsInput {
   promptId: string;
   category: IdeaCategory;
+  /** Job ID for tracking generation progress - used to update job status on completion */
+  jobId: string;
+  /** Prompt title for toast notifications */
+  promptTitle: string;
 }
 
 /**
  * Result from generating suggestions
  */
 interface GenerateSuggestionsResult {
-  suggestions: IdeaSuggestion[];
+  suggestions: AnalysisSuggestion[];
   promptId: string;
   category: IdeaCategory;
+  /** Job ID passed through for onSuccess handler */
+  jobId: string;
+  /** Prompt title passed through for toast notifications */
+  promptTitle: string;
 }
 
 /**
@@ -52,7 +61,7 @@ export function useGenerateIdeationSuggestions(projectPath: string) {
 
   return useMutation({
     mutationFn: async (input: GenerateSuggestionsInput): Promise<GenerateSuggestionsResult> => {
-      const { promptId, category } = input;
+      const { promptId, category, jobId, promptTitle } = input;
 
       const api = getElectronAPI();
       if (!api.ideation?.generateSuggestions) {
@@ -69,14 +78,33 @@ export function useGenerateIdeationSuggestions(projectPath: string) {
         suggestions: result.suggestions ?? [],
         promptId,
         category,
+        jobId,
+        promptTitle,
       };
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      // Update job status in Zustand store - this runs even if the component unmounts
+      // Using getState() to access store directly without hooks (safe in callbacks)
+      const updateJobStatus = useIdeationStore.getState().updateJobStatus;
+      updateJobStatus(data.jobId, 'ready', data.suggestions);
+
+      // Show success toast
+      toast.success(`Generated ${data.suggestions.length} ideas for "${data.promptTitle}"`, {
+        duration: 10000,
+      });
+
       // Invalidate ideation ideas cache
       queryClient.invalidateQueries({
         queryKey: queryKeys.ideation.ideas(projectPath),
       });
     },
-    // Toast notifications are handled by the component since it has access to prompt title
+    onError: (error, variables) => {
+      // Update job status to error - this runs even if the component unmounts
+      const updateJobStatus = useIdeationStore.getState().updateJobStatus;
+      updateJobStatus(variables.jobId, 'error', undefined, error.message);
+
+      // Show error toast
+      toast.error(`Failed to generate ideas: ${error.message}`);
+    },
   });
 }

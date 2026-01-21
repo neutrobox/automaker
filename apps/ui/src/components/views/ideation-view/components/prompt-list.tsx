@@ -11,7 +11,6 @@ import { useIdeationStore } from '@/store/ideation-store';
 import { useAppStore } from '@/store/app-store';
 import { useGenerateIdeationSuggestions } from '@/hooks/mutations';
 import { toast } from 'sonner';
-import { useNavigate } from '@tanstack/react-router';
 import type { IdeaCategory, IdeationPrompt } from '@automaker/types';
 
 interface PromptListProps {
@@ -24,10 +23,8 @@ export function PromptList({ category, onBack }: PromptListProps) {
   const generationJobs = useIdeationStore((s) => s.generationJobs);
   const setMode = useIdeationStore((s) => s.setMode);
   const addGenerationJob = useIdeationStore((s) => s.addGenerationJob);
-  const updateJobStatus = useIdeationStore((s) => s.updateJobStatus);
   const [loadingPromptId, setLoadingPromptId] = useState<string | null>(null);
   const [startedPrompts, setStartedPrompts] = useState<Set<string>>(new Set());
-  const navigate = useNavigate();
 
   // React Query mutation
   const generateMutation = useGenerateIdeationSuggestions(currentProject?.path ?? '');
@@ -72,27 +69,13 @@ export function PromptList({ category, onBack }: PromptListProps) {
     toast.info(`Generating ideas for "${prompt.title}"...`);
     setMode('dashboard');
 
+    // Start mutation - onSuccess/onError are handled at the hook level to ensure
+    // they fire even after this component unmounts (which happens due to setMode above)
     generateMutation.mutate(
-      { promptId: prompt.id, category },
+      { promptId: prompt.id, category, jobId, promptTitle: prompt.title },
       {
-        onSuccess: (data) => {
-          updateJobStatus(jobId, 'ready', data.suggestions);
-          toast.success(`Generated ${data.suggestions.length} ideas for "${prompt.title}"`, {
-            duration: 10000,
-            action: {
-              label: 'View Ideas',
-              onClick: () => {
-                setMode('dashboard');
-                navigate({ to: '/ideation' });
-              },
-            },
-          });
-          setLoadingPromptId(null);
-        },
-        onError: (error) => {
-          console.error('Failed to generate suggestions:', error);
-          updateJobStatus(jobId, 'error', undefined, error.message);
-          toast.error(error.message);
+        // Optional: reset local loading state if component is still mounted
+        onSettled: () => {
           setLoadingPromptId(null);
         },
       }
