@@ -158,45 +158,40 @@ export function createConflictCheckHandler(featureLoader: FeatureLoader) {
         return;
       }
 
-      // Extract features from the data
-      type FeatureExportType = { feature: { id: string; title?: string } };
-      type BulkExportType = { features: FeatureExportType[] };
-      type RawFeatureType = { id: string; title?: string };
-
+      // Extract features from the data using type guards
       let featuresToCheck: Array<{ id: string; title?: string }> = [];
 
-      if ('features' in parsed && Array.isArray((parsed as BulkExportType).features)) {
+      if (exportService.isBulkExport(parsed)) {
         // Bulk export format
-        featuresToCheck = (parsed as BulkExportType).features.map((f) => ({
+        featuresToCheck = parsed.features.map((f) => ({
           id: f.feature.id,
           title: f.feature.title,
         }));
-      } else if ('feature' in parsed) {
+      } else if (exportService.isFeatureExport(parsed)) {
         // Single FeatureExport format
-        const featureExport = parsed as FeatureExportType;
         featuresToCheck = [
           {
-            id: featureExport.feature.id,
-            title: featureExport.feature.title,
+            id: parsed.feature.id,
+            title: parsed.feature.title,
           },
         ];
-      } else if ('id' in parsed) {
+      } else if (exportService.isRawFeature(parsed)) {
         // Raw Feature format
-        const rawFeature = parsed as RawFeatureType;
-        featuresToCheck = [{ id: rawFeature.id, title: rawFeature.title }];
+        featuresToCheck = [{ id: parsed.id, title: parsed.title }];
       }
 
-      // Check each feature for conflicts
-      const conflicts: ConflictInfo[] = [];
-      for (const feature of featuresToCheck) {
-        const existing = await featureLoader.get(projectPath, feature.id);
-        conflicts.push({
-          featureId: feature.id,
-          title: feature.title,
-          existingTitle: existing?.title,
-          hasConflict: !!existing,
-        });
-      }
+      // Check each feature for conflicts in parallel
+      const conflicts: ConflictInfo[] = await Promise.all(
+        featuresToCheck.map(async (feature) => {
+          const existing = await featureLoader.get(projectPath, feature.id);
+          return {
+            featureId: feature.id,
+            title: feature.title,
+            existingTitle: existing?.title,
+            hasConflict: !!existing,
+          };
+        })
+      );
 
       const hasConflicts = conflicts.some((c) => c.hasConflict);
 

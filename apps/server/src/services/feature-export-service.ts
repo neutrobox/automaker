@@ -133,7 +133,7 @@ export class FeatureExportService {
       ...(metadata ? { metadata } : {}),
     };
 
-    return this.serializeExport(exportData, format, prettyPrint);
+    return this.serialize(exportData, format, prettyPrint);
   }
 
   /**
@@ -170,16 +170,19 @@ export class FeatureExportService {
       features = features.filter((f) => f.status === status);
     }
 
+    // Generate timestamp once for consistent export time across all features
+    const exportedAt = new Date().toISOString();
+
     // Prepare feature exports
     const featureExports: FeatureExport[] = features.map((feature) => ({
       version: FEATURE_EXPORT_VERSION,
       feature: this.prepareFeatureForExport(feature, { includeHistory, includePlanSpec }),
-      exportedAt: new Date().toISOString(),
+      exportedAt,
     }));
 
     const bulkExport: BulkExportResult = {
       version: FEATURE_EXPORT_VERSION,
-      exportedAt: new Date().toISOString(),
+      exportedAt,
       count: featureExports.length,
       features: featureExports,
       ...(metadata ? { metadata } : {}),
@@ -187,7 +190,7 @@ export class FeatureExportService {
 
     logger.info(`Exported ${featureExports.length} features from ${projectPath}`);
 
-    return this.serializeBulkExport(bulkExport, format, prettyPrint);
+    return this.serialize(bulkExport, format, prettyPrint);
   }
 
   /**
@@ -449,12 +452,42 @@ export class FeatureExportService {
   /**
    * Check if parsed data is a bulk export
    */
-  private isBulkExport(data: unknown): data is BulkExportResult {
+  isBulkExport(data: unknown): data is BulkExportResult {
     if (!data || typeof data !== 'object') {
       return false;
     }
     const obj = data as Record<string, unknown>;
     return 'version' in obj && 'features' in obj && Array.isArray(obj.features);
+  }
+
+  /**
+   * Check if parsed data is a single FeatureExport
+   */
+  isFeatureExport(data: unknown): data is FeatureExport {
+    if (!data || typeof data !== 'object') {
+      return false;
+    }
+    const obj = data as Record<string, unknown>;
+    return (
+      'version' in obj &&
+      'feature' in obj &&
+      'exportedAt' in obj &&
+      typeof obj.feature === 'object' &&
+      obj.feature !== null &&
+      'id' in (obj.feature as Record<string, unknown>)
+    );
+  }
+
+  /**
+   * Check if parsed data is a raw Feature
+   */
+  isRawFeature(data: unknown): data is Feature {
+    if (!data || typeof data !== 'object') {
+      return false;
+    }
+    const obj = data as Record<string, unknown>;
+    // A raw feature has 'id' but not the 'version' + 'feature' wrapper of FeatureExport
+    return 'id' in obj && !('feature' in obj && 'version' in obj);
   }
 
   /**
@@ -475,24 +508,10 @@ export class FeatureExportService {
   }
 
   /**
-   * Serialize export data to string
+   * Serialize export data to string (handles both single feature and bulk exports)
    */
-  private serializeExport(data: FeatureExport, format: ExportFormat, prettyPrint: boolean): string {
-    if (format === 'yaml') {
-      return yamlStringify(data, {
-        indent: 2,
-        lineWidth: 120,
-      });
-    }
-
-    return prettyPrint ? JSON.stringify(data, null, 2) : JSON.stringify(data);
-  }
-
-  /**
-   * Serialize bulk export data to string
-   */
-  private serializeBulkExport(
-    data: BulkExportResult,
+  private serialize<T extends FeatureExport | BulkExportResult>(
+    data: T,
     format: ExportFormat,
     prettyPrint: boolean
   ): string {
