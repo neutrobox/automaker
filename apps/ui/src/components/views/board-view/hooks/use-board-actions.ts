@@ -348,16 +348,21 @@ export function useBoardActions({
         // This ensures features updated on a non-main worktree are associated with that worktree
         finalBranchName = currentWorktreeBranch || undefined;
       } else if (workMode === 'auto') {
-        // Auto-generate a branch name based on feature title and timestamp
-        // Create a slug from the title: lowercase, replace non-alphanumeric with hyphens
-        const titleSlug =
-          titleForBranch
-            .toLowerCase()
-            .replace(/[^a-z0-9]+/g, '-') // Replace non-alphanumeric sequences with hyphens
-            .substring(0, 50) // Limit length first
-            .replace(/^-|-$/g, '') || 'untitled'; // Then remove leading/trailing hyphens, with fallback
-        const randomSuffix = Math.random().toString(36).substring(2, 6);
-        finalBranchName = `feature/${titleSlug}-${randomSuffix}`;
+        // Preserve existing branch name if one exists (avoid orphaning worktrees on edit)
+        if (updates.branchName?.trim()) {
+          finalBranchName = updates.branchName;
+        } else {
+          // Auto-generate a branch name based on feature title
+          // Create a slug from the title: lowercase, replace non-alphanumeric with hyphens
+          const titleSlug =
+            titleForBranch
+              .toLowerCase()
+              .replace(/[^a-z0-9]+/g, '-') // Replace non-alphanumeric sequences with hyphens
+              .substring(0, 50) // Limit length first
+              .replace(/^-|-$/g, '') || 'untitled'; // Then remove leading/trailing hyphens, with fallback
+          const randomSuffix = Math.random().toString(36).substring(2, 6);
+          finalBranchName = `feature/${titleSlug}-${randomSuffix}`;
+        }
       } else {
         finalBranchName = updates.branchName || undefined;
       }
