@@ -25,7 +25,6 @@ export type EventType =
   | 'project:analysis-progress'
   | 'project:analysis-completed'
   | 'project:analysis-error'
-  | 'suggestions:event'
   | 'spec-regeneration:event'
   | 'issue-validation:event'
   | 'ideation:stream'

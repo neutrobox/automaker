@@ -337,10 +337,11 @@ export class CursorProvider extends CliProvider {
       '--stream-partial-output' // Real-time streaming
     );
 
-    // Only add --force if NOT in read-only mode
-    // Without --force, Cursor CLI suggests changes but doesn't apply them
-    // With --force, Cursor CLI can actually edit files
-    if (!options.readOnly) {
+    // In read-only mode, use --mode ask for Q&A style (no tools)
+    // Otherwise, add --force to allow file edits
+    if (options.readOnly) {
+      cliArgs.push('--mode', 'ask');
+    } else {
       cliArgs.push('--force');
     }
 
@@ -672,10 +673,13 @@ export class CursorProvider extends CliProvider {
       );
     }
 
-    // Extract prompt text to pass via stdin (avoids shell escaping issues)
-    const promptText = this.extractPromptText(options);
+    // Embed system prompt into user prompt (Cursor CLI doesn't support separate system messages)
+    const effectiveOptions = this.embedSystemPromptIntoPrompt(options);
 
-    const cliArgs = this.buildCliArgs(options);
+    // Extract prompt text to pass via stdin (avoids shell escaping issues)
+    const promptText = this.extractPromptText(effectiveOptions);
+
+    const cliArgs = this.buildCliArgs(effectiveOptions);
     const subprocessOptions = this.buildSubprocessOptions(options, cliArgs);
 
     // Pass prompt via stdin to avoid shell interpretation of special characters

@@ -951,6 +951,7 @@ export interface WorktreeAPI {
       aheadCount: number;
       behindCount: number;
       hasRemoteBranch: boolean;
+      hasAnyRemotes: boolean;
     };
     error?: string;
     code?: 'NOT_GIT_REPO' | 'NO_COMMITS'; // Error codes for git status issues
@@ -986,6 +987,23 @@ export interface WorktreeAPI {
     };
     error?: string;
     code?: 'NOT_GIT_REPO' | 'NO_COMMITS';
+  }>;
+
+  // Add a new remote to a git repository
+  addRemote: (
+    worktreePath: string,
+    remoteName: string,
+    remoteUrl: string
+  ) => Promise<{
+    success: boolean;
+    result?: {
+      remoteName: string;
+      remoteUrl: string;
+      fetched: boolean;
+      message: string;
+    };
+    error?: string;
+    code?: 'REMOTE_EXISTS';
   }>;
 
   // Open a worktree directory in the editor

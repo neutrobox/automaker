@@ -27,7 +27,7 @@ import {
   Copy,
   Eye,
   ScrollText,
-  Sparkles,
+  CloudOff,
   Terminal,
   SquarePlus,
   SplitSquareHorizontal,
@@ -365,9 +365,9 @@ export function WorktreeActionsDropdown({
             {isPushing ? 'Pushing...' : 'Push'}
             {!canPerformGitOps && <AlertCircle className="w-3 h-3 ml-auto text-muted-foreground" />}
             {canPerformGitOps && !hasRemoteBranch && (
-              <span className="ml-auto inline-flex items-center gap-0.5 text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded">
-                <Sparkles className="w-2.5 h-2.5" />
-                new
+              <span className="ml-auto inline-flex items-center gap-0.5 text-[10px] bg-amber-500/20 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded">
+                <CloudOff className="w-2.5 h-2.5" />
+                local only
               </span>
             )}
             {canPerformGitOps && hasRemoteBranch && aheadCount > 0 && (

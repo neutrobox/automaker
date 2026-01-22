@@ -53,6 +53,7 @@ import {
 } from './routes/init-script.js';
 import { createDiscardChangesHandler } from './routes/discard-changes.js';
 import { createListRemotesHandler } from './routes/list-remotes.js';
+import { createAddRemoteHandler } from './routes/add-remote.js';
 import type { SettingsService } from '../../services/settings-service.js';
 
 export function createWorktreeRoutes(
@@ -176,6 +177,14 @@ export function createWorktreeRoutes(
     validatePathParams('worktreePath'),
     requireValidWorktree,
     createListRemotesHandler()
+  );
+
+  // Add remote route
+  router.post(
+    '/add-remote',
+    validatePathParams('worktreePath'),
+    requireGitRepoOnly,
+    createAddRemoteHandler()
   );
 
   return router;

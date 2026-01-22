@@ -110,6 +110,18 @@ export function createListBranchesHandler() {
         }
       }
 
+      // Check if any remotes are configured for this repository
+      let hasAnyRemotes = false;
+      try {
+        const { stdout: remotesOutput } = await execAsync('git remote', {
+          cwd: worktreePath,
+        });
+        hasAnyRemotes = remotesOutput.trim().length > 0;
+      } catch {
+        // If git remote fails, assume no remotes
+        hasAnyRemotes = false;
+      }
+
       // Get ahead/behind count for current branch and check if remote branch exists
       let aheadCount = 0;
       let behindCount = 0;
@@ -154,6 +166,7 @@ export function createListBranchesHandler() {
           aheadCount,
           behindCount,
           hasRemoteBranch,
+          hasAnyRemotes,
         },
       });
     } catch (error) {

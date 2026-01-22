@@ -370,40 +370,6 @@ export interface GitHubAPI {
   }>;
 }
 
-// Feature Suggestions types
-export interface FeatureSuggestion {
-  id: string;
-  category: string;
-  description: string;
-  priority: number;
-  reasoning: string;
-}
-
-export interface SuggestionsEvent {
-  type: 'suggestions_progress' | 'suggestions_tool' | 'suggestions_complete' | 'suggestions_error';
-  content?: string;
-  tool?: string;
-  input?: unknown;
-  suggestions?: FeatureSuggestion[];
-  error?: string;
-}
-
-export type SuggestionType = 'features' | 'refactoring' | 'security' | 'performance';
-
-export interface SuggestionsAPI {
-  generate: (
-    projectPath: string,
-    suggestionType?: SuggestionType
-  ) => Promise<{ success: boolean; error?: string }>;
-  stop: () => Promise<{ success: boolean; error?: string }>;
-  status: () => Promise<{
-    success: boolean;
-    isRunning?: boolean;
-    error?: string;
-  }>;
-  onEvent: (callback: (event: SuggestionsEvent) => void) => () => void;
-}
-
 // Spec Regeneration types
 export type SpecRegenerationEvent =
   | { type: 'spec_regeneration_progress'; content: string; projectPath: string }
@@ -702,7 +668,6 @@ export interface ElectronAPI {
   };
   worktree?: WorktreeAPI;
   git?: GitAPI;
-  suggestions?: SuggestionsAPI;
   specRegeneration?: SpecRegenerationAPI;
   autoMode?: AutoModeAPI;
   features?: FeaturesAPI;
@@ -1333,9 +1298,6 @@ const getMockElectronAPI = (): ElectronAPI => {
     // Mock Git API (for non-worktree operations)
     git: createMockGitAPI(),
 
-    // Mock Suggestions API
-    suggestions: createMockSuggestionsAPI(),
-
     // Mock Spec Regeneration API
     specRegeneration: createMockSpecRegenerationAPI(),
 
@@ -1782,6 +1744,7 @@ function createMockWorktreeAPI(): WorktreeAPI {
           aheadCount: 2,
           behindCount: 0,
           hasRemoteBranch: true,
+          hasAnyRemotes: true,
         },
       };
     },
@@ -2602,226 +2565,6 @@ function delay(ms: number, featureId: string): Promise<void> {
     const timeout = setTimeout(resolve, ms);
     mockAutoModeTimeouts.set(featureId, timeout);
   });
-}
-
-// Mock Suggestions state and implementation
-let mockSuggestionsRunning = false;
-let mockSuggestionsCallbacks: ((event: SuggestionsEvent) => void)[] = [];
-let mockSuggestionsTimeout: NodeJS.Timeout | null = null;
-
-function createMockSuggestionsAPI(): SuggestionsAPI {
-  return {
-    generate: async (projectPath: string, suggestionType: SuggestionType = 'features') => {
-      if (mockSuggestionsRunning) {
-        return {
-          success: false,
-          error: 'Suggestions generation is already running',
-        };
-      }
-
-      mockSuggestionsRunning = true;
-      console.log(`[Mock] Generating ${suggestionType} suggestions for: ${projectPath}`);
-
-      // Simulate async suggestion generation
-      simulateSuggestionsGeneration(suggestionType);
-
-      return { success: true };
-    },
-
-    stop: async () => {
-      mockSuggestionsRunning = false;
-      if (mockSuggestionsTimeout) {
-        clearTimeout(mockSuggestionsTimeout);
-        mockSuggestionsTimeout = null;
-      }
-      return { success: true };
-    },
-
-    status: async () => {
-      return {
-        success: true,
-        isRunning: mockSuggestionsRunning,
-      };
-    },
-
-    onEvent: (callback: (event: SuggestionsEvent) => void) => {
-      mockSuggestionsCallbacks.push(callback);
-      return () => {
-        mockSuggestionsCallbacks = mockSuggestionsCallbacks.filter((cb) => cb !== callback);
-      };
-    },
-  };
-}
-
-function emitSuggestionsEvent(event: SuggestionsEvent) {
-  mockSuggestionsCallbacks.forEach((cb) => cb(event));
-}
-
-async function simulateSuggestionsGeneration(suggestionType: SuggestionType = 'features') {
-  const typeLabels: Record<SuggestionType, string> = {
-    features: 'feature suggestions',
-    refactoring: 'refactoring opportunities',
-    security: 'security vulnerabilities',
-    performance: 'performance issues',
-  };
-
-  // Emit progress events
-  emitSuggestionsEvent({
-    type: 'suggestions_progress',
-    content: `Starting project analysis for ${typeLabels[suggestionType]}...\n`,
-  });
-
-  await new Promise((resolve) => {
-    mockSuggestionsTimeout = setTimeout(resolve, 500);
-  });
-  if (!mockSuggestionsRunning) return;
-
-  emitSuggestionsEvent({
-    type: 'suggestions_tool',
-    tool: 'Glob',
-    input: { pattern: '**/*.{ts,tsx,js,jsx}' },
-  });
-
-  await new Promise((resolve) => {
-    mockSuggestionsTimeout = setTimeout(resolve, 500);
-  });
-  if (!mockSuggestionsRunning) return;
-
-  emitSuggestionsEvent({
-    type: 'suggestions_progress',
-    content: 'Analyzing codebase structure...\n',
-  });
-
-  await new Promise((resolve) => {
-    mockSuggestionsTimeout = setTimeout(resolve, 500);
-  });
-  if (!mockSuggestionsRunning) return;
-
-  emitSuggestionsEvent({
-    type: 'suggestions_progress',
-    content: `Identifying ${typeLabels[suggestionType]}...\n`,
-  });
-
-  await new Promise((resolve) => {
-    mockSuggestionsTimeout = setTimeout(resolve, 500);
-  });
-  if (!mockSuggestionsRunning) return;
-
-  // Generate mock suggestions based on type
-  let mockSuggestions: FeatureSuggestion[];
-
-  switch (suggestionType) {
-    case 'refactoring':
-      mockSuggestions = [
-        {
-          id: `suggestion-${Date.now()}-0`,
-          category: 'Code Smell',
-          description: 'Extract duplicate validation logic into reusable utility',
-          priority: 1,
-          reasoning: 'Reduces code duplication and improves maintainability',
-        },
-        {
-          id: `suggestion-${Date.now()}-1`,
-          category: 'Complexity',
-          description: 'Break down large handleSubmit function into smaller functions',
-          priority: 2,
-          reasoning: 'Function is too long and handles multiple responsibilities',
-        },
-        {
-          id: `suggestion-${Date.now()}-2`,
-          category: 'Architecture',
-          description: 'Move business logic out of React components into hooks',
-          priority: 3,
-          reasoning: 'Improves separation of concerns and testability',
-        },
-      ];
-      break;
-
-    case 'security':
-      mockSuggestions = [
-        {
-          id: `suggestion-${Date.now()}-0`,
-          category: 'High',
-          description: 'Sanitize user input before rendering to prevent XSS',
-          priority: 1,
-          reasoning: 'User input is rendered without proper sanitization',
-        },
-        {
-          id: `suggestion-${Date.now()}-1`,
-          category: 'Medium',
-          description: 'Add rate limiting to authentication endpoints',
-          priority: 2,
-          reasoning: 'Prevents brute force attacks on authentication',
-        },
-        {
-          id: `suggestion-${Date.now()}-2`,
-          category: 'Low',
-          description: 'Remove sensitive information from error messages',
-          priority: 3,
-          reasoning: 'Error messages may leak implementation details',
-        },
-      ];
-      break;
-
-    case 'performance':
-      mockSuggestions = [
-        {
-          id: `suggestion-${Date.now()}-0`,
-          category: 'Rendering',
-          description: 'Add React.memo to prevent unnecessary re-renders',
-          priority: 1,
-          reasoning: "Components re-render even when props haven't changed",
-        },
-        {
-          id: `suggestion-${Date.now()}-1`,
-          category: 'Bundle Size',
-          description: 'Implement code splitting for route components',
-          priority: 2,
-          reasoning: 'Initial bundle is larger than necessary',
-        },
-        {
-          id: `suggestion-${Date.now()}-2`,
-          category: 'Caching',
-          description: 'Add memoization for expensive computations',
-          priority: 3,
-          reasoning: 'Expensive computations run on every render',
-        },
-      ];
-      break;
-
-    default: // "features"
-      mockSuggestions = [
-        {
-          id: `suggestion-${Date.now()}-0`,
-          category: 'User Experience',
-          description: 'Add dark mode toggle with system preference detection',
-          priority: 1,
-          reasoning: 'Dark mode is a standard feature that improves accessibility and user comfort',
-        },
-        {
-          id: `suggestion-${Date.now()}-1`,
-          category: 'Performance',
-          description: 'Implement lazy loading for heavy components',
-          priority: 2,
-          reasoning: 'Improves initial load time and reduces bundle size',
-        },
-        {
-          id: `suggestion-${Date.now()}-2`,
-          category: 'Accessibility',
-          description: 'Add keyboard navigation support throughout the app',
-          priority: 3,
-          reasoning: 'Improves accessibility for users who rely on keyboard navigation',
-        },
-      ];
-  }
-
-  emitSuggestionsEvent({
-    type: 'suggestions_complete',
-    suggestions: mockSuggestions,
-  });
-
-  mockSuggestionsRunning = false;
-  mockSuggestionsTimeout = null;
 }
 
 // Mock Spec Regeneration state and implementation

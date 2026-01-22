@@ -688,9 +688,9 @@ export class IdeationService {
         existingWorkContext
       );
 
-      // Get model from phase settings with provider info (suggestionsModel)
+      // Get model from phase settings with provider info (ideationModel)
       const phaseResult = await getPhaseModelWithOverrides(
-        'suggestionsModel',
+        'ideationModel',
         this.settingsService,
         projectPath,
         '[IdeationService]'
@@ -730,6 +730,7 @@ export class IdeationService {
         // Disable all tools - we just want text generation, not codebase analysis
         allowedTools: [],
         abortController: new AbortController(),
+        readOnly: true, // Suggestions only need to return JSON, never write files
         claudeCompatibleProvider, // Pass provider for alternative endpoint configuration
         credentials, // Pass credentials for resolving 'credentials' apiKeySource
       };

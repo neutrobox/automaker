@@ -17,6 +17,10 @@
     "./debounce": {
       "types": "./dist/debounce.d.ts",
       "default": "./dist/debounce.js"
+    },
+    "./error-handler": {
+      "types": "./dist/error-handler.d.ts",
+      "default": "./dist/error-handler.js"
     }
   },
   "scripts": {

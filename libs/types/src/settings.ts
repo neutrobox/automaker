@@ -598,8 +598,8 @@ export interface PhaseModelConfig {
   backlogPlanningModel: PhaseModelEntry;
   /** Model for analyzing project structure */
   projectAnalysisModel: PhaseModelEntry;
-  /** Model for AI suggestions (feature, refactoring, security, performance) */
-  suggestionsModel: PhaseModelEntry;
+  /** Model for ideation view (generating AI suggestions for features, security, performance) */
+  ideationModel: PhaseModelEntry;
 
   // Memory tasks - for learning extraction and memory operations
   /** Model for extracting learnings from completed agent sessions */
@@ -1235,7 +1235,7 @@ export const DEFAULT_PHASE_MODELS: PhaseModelConfig = {
   featureGenerationModel: { model: 'claude-sonnet' },
   backlogPlanningModel: { model: 'claude-sonnet' },
   projectAnalysisModel: { model: 'claude-sonnet' },
-  suggestionsModel: { model: 'claude-sonnet' },
+  ideationModel: { model: 'claude-sonnet' },
 
   // Memory - use fast model for learning extraction (cost-effective)
   memoryExtractionModel: { model: 'claude-haiku' },

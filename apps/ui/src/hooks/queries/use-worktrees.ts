@@ -151,7 +151,7 @@ export function useWorktreeDiffs(projectPath: string | undefined, featureId: str
 interface BranchInfo {
   name: string;
   isCurrent: boolean;
-  isRemote?: boolean;
+  isRemote: boolean;
   lastCommit?: string;
   upstream?: string;
 }
@@ -161,6 +161,7 @@ interface BranchesResult {
   aheadCount: number;
   behindCount: number;
   hasRemoteBranch: boolean;
+  hasAnyRemotes: boolean;
   isGitRepo: boolean;
   hasCommits: boolean;
 }
@@ -188,6 +189,7 @@ export function useWorktreeBranches(worktreePath: string | undefined, includeRem
           aheadCount: 0,
           behindCount: 0,
           hasRemoteBranch: false,
+          hasAnyRemotes: false,
           isGitRepo: false,
           hasCommits: false,
         };
@@ -198,6 +200,7 @@ export function useWorktreeBranches(worktreePath: string | undefined, includeRem
           aheadCount: 0,
           behindCount: 0,
           hasRemoteBranch: false,
+          hasAnyRemotes: result.result?.hasAnyRemotes ?? false,
           isGitRepo: true,
           hasCommits: false,
         };
@@ -212,6 +215,7 @@ export function useWorktreeBranches(worktreePath: string | undefined, includeRem
         aheadCount: result.result?.aheadCount ?? 0,
         behindCount: result.result?.behindCount ?? 0,
         hasRemoteBranch: result.result?.hasRemoteBranch ?? false,
+        hasAnyRemotes: result.result?.hasAnyRemotes ?? false,
         isGitRepo: true,
         hasCommits: true,
       };

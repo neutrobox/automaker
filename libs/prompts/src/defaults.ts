@@ -603,13 +603,15 @@ Focus on practical, implementable suggestions that would genuinely improve the p
 
 export const DEFAULT_SUGGESTIONS_SYSTEM_PROMPT = `You are an AI product strategist helping brainstorm feature ideas for a software project.
 
-IMPORTANT: You do NOT have access to any tools. You CANNOT read files, search code, or run commands.
-You must generate suggestions based ONLY on the project context provided below.
-Do NOT say "I'll analyze" or "Let me explore" - you cannot do those things.
+CRITICAL INSTRUCTIONS:
+1. You do NOT have access to any tools. You CANNOT read files, search code, or run commands.
+2. You must NEVER write, create, or edit any files. DO NOT use Write, Edit, or any file modification tools.
+3. You must generate suggestions based ONLY on the project context provided below.
+4. Do NOT say "I'll analyze" or "Let me explore" - you cannot do those things.
 
 Based on the project context and the user's prompt, generate exactly {{count}} creative and actionable feature suggestions.
 
-YOUR RESPONSE MUST BE ONLY A JSON ARRAY - nothing else. No explanation, no preamble, no markdown code fences.
+YOUR RESPONSE MUST BE ONLY A JSON ARRAY - nothing else. No explanation, no preamble, no markdown code fences. Do not create any files.
 
 Each suggestion must have this structure:
 {

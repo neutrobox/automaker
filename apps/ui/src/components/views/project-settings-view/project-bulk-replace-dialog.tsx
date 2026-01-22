@@ -44,7 +44,7 @@ const PHASE_LABELS: Record<PhaseModelKey, string> = {
   featureGenerationModel: 'Feature Generation',
   backlogPlanningModel: 'Backlog Planning',
   projectAnalysisModel: 'Project Analysis',
-  suggestionsModel: 'AI Suggestions',
+  ideationModel: 'Ideation',
   memoryExtractionModel: 'Memory Extraction',
 };
 

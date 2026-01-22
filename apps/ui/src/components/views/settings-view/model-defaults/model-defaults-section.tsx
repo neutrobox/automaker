@@ -67,9 +67,9 @@ const GENERATION_TASKS: PhaseConfig[] = [
     description: 'Analyzes project structure for suggestions',
   },
   {
-    key: 'suggestionsModel',
-    label: 'AI Suggestions',
-    description: 'Model for feature, refactoring, security, and performance suggestions',
+    key: 'ideationModel',
+    label: 'Ideation',
+    description: 'Model for ideation view (generating AI suggestions)',
   },
 ];
 

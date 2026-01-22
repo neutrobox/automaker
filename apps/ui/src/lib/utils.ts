@@ -7,6 +7,12 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+// Re-export getErrorMessage from @automaker/utils to maintain backward compatibility
+// for components that already import it from here
+// NOTE: Using subpath export to avoid pulling in Node.js-specific dependencies
+// (the main @automaker/utils barrel imports modules that depend on @automaker/platform)
+export { getErrorMessage } from '@automaker/utils/error-handler';
+
 /**
  * Determine if the current model supports extended thinking controls
  * Note: This is for Claude's "thinking levels" only, not Codex's "reasoning effort"

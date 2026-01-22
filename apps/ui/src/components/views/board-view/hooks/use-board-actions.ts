@@ -123,9 +123,34 @@ export function useBoardActions({
     }) => {
       const workMode = featureData.workMode || 'current';
 
+      // For auto worktree mode, we need a title for the branch name.
+      // If no title provided, generate one from the description first.
+      let titleForBranch = featureData.title;
+      let titleWasGenerated = false;
+
+      if (workMode === 'auto' && !featureData.title.trim() && featureData.description.trim()) {
+        // Generate title first so we can use it for the branch name
+        const api = getElectronAPI();
+        if (api?.features?.generateTitle) {
+          try {
+            const result = await api.features.generateTitle(featureData.description);
+            if (result.success && result.title) {
+              titleForBranch = result.title;
+              titleWasGenerated = true;
+            }
+          } catch (error) {
+            logger.error('Error generating title for branch name:', error);
+          }
+        }
+        // If title generation failed, fall back to first part of description
+        if (!titleForBranch.trim()) {
+          titleForBranch = featureData.description.substring(0, 60);
+        }
+      }
+
       // Determine final branch name based on work mode:
       // - 'current': Use current worktree's branch (or undefined if on main)
-      // - 'auto': Auto-generate branch name based on current branch
+      // - 'auto': Auto-generate branch name based on feature title
       // - 'custom': Use the provided branch name
       let finalBranchName: string | undefined;
 
@@ -134,13 +159,16 @@ export function useBoardActions({
         // This ensures features created on a non-main worktree are associated with that worktree
         finalBranchName = currentWorktreeBranch || undefined;
       } else if (workMode === 'auto') {
-        // Auto-generate a branch name based on primary branch (main/master) and timestamp
-        // Always use primary branch to avoid nested feature/feature/... paths
-        const baseBranch =
-          (currentProject?.path ? getPrimaryWorktreeBranch(currentProject.path) : null) || 'main';
-        const timestamp = Date.now();
+        // Auto-generate a branch name based on feature title and timestamp
+        // Create a slug from the title: lowercase, replace non-alphanumeric with hyphens
+        const titleSlug =
+          titleForBranch
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-') // Replace non-alphanumeric sequences with hyphens
+            .substring(0, 50) // Limit length first
+            .replace(/^-|-$/g, '') || 'untitled'; // Then remove leading/trailing hyphens, with fallback
         const randomSuffix = Math.random().toString(36).substring(2, 6);
-        finalBranchName = `feature/${baseBranch}-${timestamp}-${randomSuffix}`;
+        finalBranchName = `feature/${titleSlug}-${randomSuffix}`;
       } else {
         // Custom mode - use provided branch name
         finalBranchName = featureData.branchName || undefined;
@@ -183,12 +211,13 @@ export function useBoardActions({
         }
       }
 
-      // Check if we need to generate a title
-      const needsTitleGeneration = !featureData.title.trim() && featureData.description.trim();
+      // Check if we need to generate a title (only if we didn't already generate it for the branch name)
+      const needsTitleGeneration =
+        !titleWasGenerated && !featureData.title.trim() && featureData.description.trim();
 
       const newFeatureData = {
         ...featureData,
-        title: featureData.title,
+        title: titleWasGenerated ? titleForBranch : featureData.title,
         titleGenerating: needsTitleGeneration,
         status: 'backlog' as const,
         branchName: finalBranchName,
@@ -255,7 +284,6 @@ export function useBoardActions({
       projectPath,
       onWorktreeCreated,
       onWorktreeAutoSelect,
-      getPrimaryWorktreeBranch,
       features,
       currentWorktreeBranch,
     ]
@@ -287,6 +315,31 @@ export function useBoardActions({
     ) => {
       const workMode = updates.workMode || 'current';
 
+      // For auto worktree mode, we need a title for the branch name.
+      // If no title provided, generate one from the description first.
+      let titleForBranch = updates.title;
+      let titleWasGenerated = false;
+
+      if (workMode === 'auto' && !updates.title.trim() && updates.description.trim()) {
+        // Generate title first so we can use it for the branch name
+        const api = getElectronAPI();
+        if (api?.features?.generateTitle) {
+          try {
+            const result = await api.features.generateTitle(updates.description);
+            if (result.success && result.title) {
+              titleForBranch = result.title;
+              titleWasGenerated = true;
+            }
+          } catch (error) {
+            logger.error('Error generating title for branch name:', error);
+          }
+        }
+        // If title generation failed, fall back to first part of description
+        if (!titleForBranch.trim()) {
+          titleForBranch = updates.description.substring(0, 60);
+        }
+      }
+
       // Determine final branch name based on work mode
       let finalBranchName: string | undefined;
 
@@ -295,13 +348,21 @@ export function useBoardActions({
         // This ensures features updated on a non-main worktree are associated with that worktree
         finalBranchName = currentWorktreeBranch || undefined;
       } else if (workMode === 'auto') {
-        // Auto-generate a branch name based on primary branch (main/master) and timestamp
-        // Always use primary branch to avoid nested feature/feature/... paths
-        const baseBranch =
-          (currentProject?.path ? getPrimaryWorktreeBranch(currentProject.path) : null) || 'main';
-        const timestamp = Date.now();
-        const randomSuffix = Math.random().toString(36).substring(2, 6);
-        finalBranchName = `feature/${baseBranch}-${timestamp}-${randomSuffix}`;
+        // Preserve existing branch name if one exists (avoid orphaning worktrees on edit)
+        if (updates.branchName?.trim()) {
+          finalBranchName = updates.branchName;
+        } else {
+          // Auto-generate a branch name based on feature title
+          // Create a slug from the title: lowercase, replace non-alphanumeric with hyphens
+          const titleSlug =
+            titleForBranch
+              .toLowerCase()
+              .replace(/[^a-z0-9]+/g, '-') // Replace non-alphanumeric sequences with hyphens
+              .substring(0, 50) // Limit length first
+              .replace(/^-|-$/g, '') || 'untitled'; // Then remove leading/trailing hyphens, with fallback
+          const randomSuffix = Math.random().toString(36).substring(2, 6);
+          finalBranchName = `feature/${titleSlug}-${randomSuffix}`;
+        }
       } else {
         finalBranchName = updates.branchName || undefined;
       }
@@ -343,7 +404,7 @@ export function useBoardActions({
 
       const finalUpdates = {
         ...restUpdates,
-        title: updates.title,
+        title: titleWasGenerated ? titleForBranch : updates.title,
         branchName: finalBranchName,
       };
 
@@ -406,7 +467,6 @@ export function useBoardActions({
       setEditingFeature,
       currentProject,
       onWorktreeCreated,
-      getPrimaryWorktreeBranch,
       features,
       currentWorktreeBranch,
     ]
